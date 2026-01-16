@@ -2,7 +2,7 @@ use std::fmt::Display;
 
 use colored::{Colorize, CustomColor};
 
-use crate::{Advice, AdviceType, Bonus, Card, Continent, Country, Player};
+use crate::{Advice, AdviceType, Board, Bonus, Card, Continent, Country, Player};
 
 impl Display for Country {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -65,7 +65,7 @@ impl Display for Card {
 }
 
 
-impl<'a> Player<'a> {
+impl Player {
     pub fn show_pile(&self) {
         print!("[");
         for (i, c) in self.pile.iter().enumerate() {
@@ -77,21 +77,16 @@ impl<'a> Player<'a> {
         println!("]");
     }
 
-    pub fn try_playing_all_counties(&'a mut self) {
-        for card in self.hand.iter() {
-            if let Some(country) = card.country() {
-                let can_play = self.can_play_country(country);
-                println!("{} {}", card, can_play);
-                if can_play {
-                    self.pile.push(country);
-                    if !self.pile.is_empty() {
-                        self.show_pile();
-                    }
-                }
+    pub fn try_playing_all_counties(&mut self) {
+        for i in 0..self.hand.len() {
+            let _ = self.play_country(i);
+            self.try_playing_all_bonuses();
+        }
+    }
 
-            }
-
-            
+    pub fn try_playing_all_bonuses(&mut self) {
+        for i in 0..self.hand.len() {
+            let _ = self.play_bonus(i);
         }
     }
 }
@@ -178,5 +173,31 @@ impl Card {
             Card::Advice(Advice::new(false, AdviceType::Bureaucracy)),
 
         ]
+    }
+}
+
+
+use tabular::{Table, Row};
+
+impl Board {
+    pub fn turn_heading(&self) {
+        println!("--------------------------");
+        println!("Its player {}'s turn", self.turn + 1);
+
+        println!("Player {}'s hand:", self.turn + 1);
+        self.players[self.turn].hand.iter().enumerate().for_each(|(i, card)| println!("| {} {}", i, card));
+
+        let mut table = Table::new("| {:<}   | {:<}   | {:<}");
+        table.add_heading("./:");
+
+        for i in 0..self.players.iter().map(|p| p.pile.len()).max().unwrap_or(0) {
+            let mut row = Row::new();
+            for player in &self.players {
+                row.add_cell(&player.pile[i]);
+            }
+            table.add_row(row);
+        }
+
+        println!("{}", table);
     }
 }

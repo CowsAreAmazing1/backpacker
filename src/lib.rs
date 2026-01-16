@@ -1,15 +1,14 @@
-#![allow(dead_code)]
+#![allow(private_interfaces)]
 
-use std::{collections::HashMap};
 use rand::prelude::*;
 
 mod looks;
 
-pub const HAND_SIZE: usize = 60;
+pub const HAND_SIZE: usize = 5;
 
 
-#[derive(Debug, PartialEq, Eq, Hash)]
-enum Bonus {
+#[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
+pub enum Bonus {
     Beach,
     Culture,
     Trekking,
@@ -26,6 +25,15 @@ impl Bonus {
             _ => panic!("Invalid bonus char -> {}", input),
         }
     }
+
+    fn unparse(&self) -> char {
+        match self {
+            Self::Beach => 'b',
+            Self::Culture => 'c',
+            Self::Trekking => 't',
+            Self::Wildlife => 'w',
+        }
+    }
 }
 
 
@@ -39,22 +47,21 @@ enum Continent {
     Oceania,
 }
 
-#[derive(Debug)]
-struct Country {
+#[derive(Debug, Clone)]
+pub struct Country {
     name: String,
     score: u8,
-    bonus: HashMap<Bonus, u8>,
+    allowed_bonus: String,
+    pub bonus: Vec<Bonus>
 }
 
 impl Country {
     fn new(name: &str, score: u8, allowed_bonuses: &str) -> Self {
-        let mut bonus = HashMap::new();
-        allowed_bonuses.chars().for_each(|b| { bonus.insert(Bonus::parse(&b),0); } );
-
         Self {
             name: name.to_string(),
             score,
-            bonus,
+            allowed_bonus: allowed_bonuses.to_string(),
+            bonus: Vec::new(),
         }
     }
 
@@ -68,6 +75,12 @@ impl Country {
             "Easter Island" | "Tahiti" | "New Zealand" | "Australia" | "Cook Islands" | "Fiji" => Continent::Oceania,
             _ => Continent::Antarctica
         }
+    }
+}
+
+impl PartialEq for Country {
+    fn eq(&self, other: &Self) -> bool {
+        self.name == other.name
     }
 }
 
@@ -122,6 +135,18 @@ impl Card {
             None
         }
     }
+
+    pub fn is_bonus(&self) -> bool {
+        matches!(self, Card::Bonus(..))
+    }
+
+    pub fn bonus(&self) -> Option<&Bonus> {
+        if let Card::Bonus(bonus) = self {
+            Some(bonus)
+        } else {
+            None
+        }
+    }
 }
 
 
@@ -135,14 +160,14 @@ enum Status {
 
 
 #[derive(Debug)]
-pub struct Player<'a> {
+pub struct Player {
     pub hand: Vec<Card>,
-    pub pile: Vec<&'a Country>,
+    pub pile: Vec<Country>,
     score: u32,
     status: Option<Status>,
 }
 
-impl<'a> Player<'a> {
+impl Player {
     fn from_hand(hand: Vec<Card>) -> Self {
         Self {
             hand,
@@ -150,6 +175,14 @@ impl<'a> Player<'a> {
             score: 0,
             status: None,
         }
+    }
+
+    pub fn top_country(&self) -> Option<&Country> {
+        self.pile.last()
+    }
+
+    pub fn top_country_mut(&mut self) -> Option<&mut Country> {
+        self.pile.last_mut()
     }
 
     pub fn can_play_country(&self, country: &Country) -> bool {
@@ -166,19 +199,75 @@ impl<'a> Player<'a> {
             times_visited < 1
         }
     }
+
+    pub fn play_country(&mut self, card_index: usize) -> Result<(), String> {
+        if card_index >= self.hand.len() {
+            return Err("Invalid index".to_string());
+        }
+
+        let card = self.hand.swap_remove(card_index);
+
+        if let Card::Country(country) = card {
+            if self.can_play_country(&country) {
+                self.pile.push(country);
+                Ok(())
+            } else {
+                self.hand.push(Card::Country(country));
+                Err("Cant play this country".to_string())
+            }
+        } else {
+            self.hand.push(card);
+            Err("Not a country card".to_string())
+        }
+    }
+
+    pub fn can_play_bonus(&self, bonus: &Bonus) -> bool {
+        if let Some(top_country) = self.top_country() && top_country.allowed_bonus.contains(bonus.unparse()) {
+            true
+        } else {
+            false
+        }
+    }
+
+    pub fn play_bonus(&mut self, card_index: usize) -> Result<(), String> {
+        if card_index >= self.hand.len() {
+            return Err("Invalid index".to_string());
+        }
+
+        let card = self.hand.swap_remove(card_index);
+
+        if let Card::Bonus(bonus) = card {
+            if let Some(top_country) = self.top_country_mut() {
+                if top_country.allowed_bonus.contains(bonus.unparse()) {
+                    top_country.bonus.push(bonus);
+                    Ok(())
+                } else {
+                    self.hand.push(Card::Bonus(bonus));
+                    Err("Cant play this bonus on the top country".to_string())
+                }
+            } else {
+                self.hand.push(Card::Bonus(bonus));
+                Err("No country on played pile".to_string())
+            }
+        } else {
+            self.hand.push(card);
+            Err("Not a bonus card".to_string())
+        }
+    }
 }
 
 
 
 
 
-pub struct Board<'a> {
+pub struct Board {
     future: Vec<Card>,
     past: Vec<Card>,
-    pub players: Vec<Player<'a>>,
+    pub players: Vec<Player>,
+    turn: usize,
 }
 
-impl<'a> Board<'a> {
+impl Board {
     pub fn new_game(num_players: usize) -> Self {
         let mut deck = Card::deck();
 
@@ -216,7 +305,12 @@ impl<'a> Board<'a> {
             future,
             past,
             players,
+            turn: 0,
         }
+    }
+
+    pub fn manual_game(&mut self) {
+        self.turn_heading();
     }
 }
 
