@@ -66,7 +66,7 @@ impl Display for Card {
 
 
 impl Player {
-    pub fn show_pile(&self) {
+    fn show_pile(&self) {
         print!("[");
         for (i, c) in self.pile.iter().enumerate() {
             if i != 0 {
@@ -77,14 +77,14 @@ impl Player {
         println!("]");
     }
 
-    pub fn try_playing_all_counties(&mut self) {
+    fn try_playing_all_counties(&mut self) {
         for i in 0..self.hand.len() {
             let _ = self.play_country(i);
             self.try_playing_all_bonuses();
         }
     }
 
-    pub fn try_playing_all_bonuses(&mut self) {
+    fn try_playing_all_bonuses(&mut self) {
         for i in 0..self.hand.len() {
             let _ = self.play_bonus(i);
         }
@@ -185,7 +185,7 @@ impl Board {
         println!("Its player {}'s turn", self.turn + 1);
 
         println!("Player {}'s hand:", self.turn + 1);
-        self.players[self.turn].hand.iter().enumerate().for_each(|(i, card)| println!("| {} {}", i, card));
+        self.players[self.turn].hand.iter().enumerate().for_each(|(i, card)| println!("| {} {}", i+1, card));
 
         println!();
 

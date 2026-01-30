@@ -7,11 +7,11 @@ use text_io::try_read;
 
 mod looks;
 
-pub const HAND_SIZE: usize = 5;
+const HAND_SIZE: usize = 5;
 
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
-pub enum Bonus {
+enum Bonus {
     Beach,
     Culture,
     Trekking,
@@ -51,11 +51,11 @@ enum Continent {
 }
 
 #[derive(Debug, Clone)]
-pub struct Country {
+struct Country {
     name: String,
     score: u8,
     allowed_bonus: String,
-    pub bonus: Vec<Bonus>
+    bonus: Vec<Bonus>
 }
 
 impl Country {
@@ -119,7 +119,7 @@ enum Special {
 
 
 #[derive(Debug)]
-pub enum Card {
+enum Card {
     Country(Country),
     Bonus(Bonus),
     Advice(Advice),
@@ -127,11 +127,11 @@ pub enum Card {
 }
 
 impl Card {
-    pub fn is_country(&self) -> bool {
+    fn is_country(&self) -> bool {
         matches!(self, Card::Country(..))
     }
 
-    pub fn country(&self) -> Option<&Country> {
+    fn country(&self) -> Option<&Country> {
         if let Card::Country(country) = self {
             Some(country)
         } else {
@@ -139,11 +139,11 @@ impl Card {
         }
     }
 
-    pub fn is_bonus(&self) -> bool {
+    fn is_bonus(&self) -> bool {
         matches!(self, Card::Bonus(..))
     }
 
-    pub fn bonus(&self) -> Option<&Bonus> {
+    fn bonus(&self) -> Option<&Bonus> {
         if let Card::Bonus(bonus) = self {
             Some(bonus)
         } else {
@@ -179,9 +179,9 @@ impl fmt::Display for BError {
 
 
 #[derive(Debug)]
-pub struct Player {
-    pub hand: Vec<Card>,
-    pub pile: Vec<Country>,
+struct Player {
+    hand: Vec<Card>,
+    pile: Vec<Country>,
     score: u32,
     status: Option<Status>,
 }
@@ -196,11 +196,11 @@ impl Player {
         }
     }
 
-    pub fn top_country(&self) -> Option<&Country> {
+    fn top_country(&self) -> Option<&Country> {
         self.pile.last()
     }
 
-    pub fn top_country_mut(&mut self) -> Option<&mut Country> {
+    fn top_country_mut(&mut self) -> Option<&mut Country> {
         self.pile.last_mut()
     }
 
@@ -219,7 +219,7 @@ impl Player {
     //     }
     // }
 
-    pub fn can_play_country(&self, country: &Country) -> Result<(), BError> {
+    fn can_play_country(&self, country: &Country) -> Result<(), BError> {
         let continent = country.continent();
         
         let times_visited = self.pile.iter().filter(|played| played.continent() == continent).count();
@@ -238,7 +238,7 @@ impl Player {
         Ok(())
     }
 
-    pub fn play_country(&mut self, card_index: usize) -> Result<(), BError> {
+    fn play_country(&mut self, card_index: usize) -> Result<(), BError> {
         if card_index >= self.hand.len() {
             // return Err("Invalid index".to_string());
             panic!("This should be checked before calling `play_country`");
@@ -261,7 +261,7 @@ impl Player {
         }
     }
 
-    pub fn can_play_bonus(&self, bonus: &Bonus) -> bool {
+    fn can_play_bonus(&self, bonus: &Bonus) -> bool {
         if let Some(top_country) = self.top_country() && top_country.allowed_bonus.contains(bonus.unparse()) {
             true
         } else {
@@ -269,7 +269,7 @@ impl Player {
         }
     }
 
-    pub fn play_bonus(&mut self, card_index: usize) -> Result<(), String> {
+    fn play_bonus(&mut self, card_index: usize) -> Result<(), String> {
         if card_index >= self.hand.len() {
             return Err("Invalid index".to_string());
         }
@@ -305,7 +305,7 @@ fn read_line() -> Result<String, io::Error> {
     Ok(buffer)
 }
 
-fn get_requested_input<T: std::cmp::PartialOrd + std::str::FromStr>(message: &str, limit: T) -> T where T: std::str::FromStr<Err: std::fmt::Debug> {
+fn get_requested_input<T, F>(message: &str, condition: F) -> T where T: PartialOrd + std::str::FromStr<Err: std::fmt::Debug>, F: Fn(&T) -> bool {
     let mut output = None;
     while matches!(output, None) {
         println!("{}", message);
@@ -313,7 +313,7 @@ fn get_requested_input<T: std::cmp::PartialOrd + std::str::FromStr>(message: &st
 
         match inp_opt {
             Ok(inp) => {
-                if inp < limit {
+                if condition(&inp) {
                     output = Some(inp);
                 } else {
                     println!("Invalid value\n");
@@ -331,7 +331,7 @@ fn get_requested_input<T: std::cmp::PartialOrd + std::str::FromStr>(message: &st
 pub struct Board {
     future: Vec<Card>,
     past: Vec<Card>,
-    pub players: Vec<Player>,
+    players: Vec<Player>,
     turn: usize,
 }
 
@@ -385,6 +385,15 @@ impl Board {
         }
     }
 
+    fn discard(&mut self, card: Card) {
+        self.past.push(card);
+    }
+
+    fn player_discard(&mut self, card_index: usize) {
+        let card = self.players[self.turn].hand.swap_remove(card_index);
+        self.discard(card);
+    }
+
     pub fn manual_game(&mut self) {
         while !self.future.is_empty() {
             self.turn_heading();
@@ -396,7 +405,6 @@ impl Board {
         // match get_requested_input("Go home?: ", 1) {
         //     1 => self.players[self.turn].go_home(),
         // }
-
 
         let mut finished_turn = false;
         while !finished_turn {
@@ -410,9 +418,18 @@ impl Board {
     }
 
     fn manual_try_turn(&mut self) -> Result<(), BError> {
-        let selected = get_requested_input("Pick a card to play", self.players[self.turn].hand.len());
+        let mut selected = get_requested_input("Pick a card to play, or 0 to discard", |&inp| inp < self.players[self.turn].hand.len());
         println!();
 
+        if selected == 0 {
+            let to_discard: usize = get_requested_input("Pick a card to discard", |&inp| inp < self.players[self.turn].hand.len() && inp > 0);
+            let to_discard = to_discard - 1;
+            self.player_discard(to_discard);
+            return Ok(())
+        }
+
+        // Allow for 1-based indexing for the user, and for 0 to represent a discard selection
+        selected -= 1;
         println!("Selected {}", self.players[self.turn].hand[selected]);
 
         match &self.players[self.turn].hand[selected] {
