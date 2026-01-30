@@ -1,6 +1,9 @@
 #![allow(private_interfaces)]
 
+use std::{error::Error, ffi::os_str::Display, fmt, io};
+
 use rand::prelude::*;
+use text_io::try_read;
 
 mod looks;
 
@@ -160,6 +163,22 @@ enum Status {
 
 
 #[derive(Debug)]
+enum BError {
+    SameContinent,
+}
+
+impl Error for BError {}
+
+impl fmt::Display for BError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::SameContinent => write!(f, "too many countries of the same continent"),
+        }
+    }
+}
+
+
+#[derive(Debug)]
 pub struct Player {
     pub hand: Vec<Card>,
     pub pile: Vec<Country>,
@@ -185,39 +204,60 @@ impl Player {
         self.pile.last_mut()
     }
 
-    pub fn can_play_country(&self, country: &Country) -> bool {
+    fn can_go_home(&self) -> bool {
+        false
+    }
+
+    // fn go_home(&mut self) {
+    //     if !self.can_go_home() { panic!("This should be checked first") }
+
+    //     let mut score = 0;
+    //     for card in &self.pile {
+    //         match card {
+                
+    //         }
+    //     }
+    // }
+
+    pub fn can_play_country(&self, country: &Country) -> Result<(), BError> {
         let continent = country.continent();
         
         let times_visited = self.pile.iter().filter(|played| played.continent() == continent).count();
         let have_credit_card = self.hand.iter().any(|card| matches!(card, Card::Special(Special::CerditCard)));
         
-        if !have_credit_card && times_visited > 0 { return false; }
-        
         if have_credit_card {
-            times_visited < 2
+            if times_visited >= 2 {
+                return Err(BError::SameContinent);
+            }
         } else {
-            times_visited < 1
+            if times_visited >= 1 {
+                return Err(BError::SameContinent)
+            }
         }
+
+        Ok(())
     }
 
-    pub fn play_country(&mut self, card_index: usize) -> Result<(), String> {
+    pub fn play_country(&mut self, card_index: usize) -> Result<(), BError> {
         if card_index >= self.hand.len() {
-            return Err("Invalid index".to_string());
+            // return Err("Invalid index".to_string());
+            panic!("This should be checked before calling `play_country`");
         }
 
         let card = self.hand.swap_remove(card_index);
 
         if let Card::Country(country) = card {
-            if self.can_play_country(&country) {
+            if let Err(err) = self.can_play_country(&country) {
+                self.hand.push(Card::Country(country));
+                Err(err)
+            } else {
                 self.pile.push(country);
                 Ok(())
-            } else {
-                self.hand.push(Card::Country(country));
-                Err("Cant play this country".to_string())
             }
         } else {
             self.hand.push(card);
-            Err("Not a country card".to_string())
+            // Err("Not a country card".to_string())
+            panic!("This should be checked before calling `play_country`");
         }
     }
 
@@ -257,6 +297,34 @@ impl Player {
 }
 
 
+
+fn read_line() -> Result<String, io::Error> {
+    let mut buffer = String::new();
+    let stdin = io::stdin(); // We get `Stdin` here.
+    stdin.read_line(&mut buffer)?;
+    Ok(buffer)
+}
+
+fn get_requested_input<T: std::cmp::PartialOrd + std::str::FromStr>(message: &str, limit: T) -> T where T: std::str::FromStr<Err: std::fmt::Debug> {
+    let mut output = None;
+    while matches!(output, None) {
+        println!("{}", message);
+        let inp_opt = try_read!();
+
+        match inp_opt {
+            Ok(inp) => {
+                if inp < limit {
+                    output = Some(inp);
+                } else {
+                    println!("Invalid value\n");
+                }
+            },
+            Err(_) => println!("Error reading input\n"),
+        }
+    }
+
+    output.unwrap()
+}
 
 
 
@@ -309,8 +377,52 @@ impl Board {
         }
     }
 
+    fn next_turn(&mut self) {
+        if self.turn == self.players.len() - 1 {
+            self.turn = 0;
+        } else {
+            self.turn += 1;
+        }
+    }
+
     pub fn manual_game(&mut self) {
-        self.turn_heading();
+        while !self.future.is_empty() {
+            self.turn_heading();
+            self.manual_turn();
+        }
+    }
+
+    fn manual_turn(&mut self) {
+        // match get_requested_input("Go home?: ", 1) {
+        //     1 => self.players[self.turn].go_home(),
+        // }
+
+
+        let mut finished_turn = false;
+        while !finished_turn {
+            let res = self.manual_try_turn();
+            match res {
+                Ok(_) => finished_turn = true,
+                Err(e) => println!("{}", e),
+            }
+        }
+        self.next_turn();
+    }
+
+    fn manual_try_turn(&mut self) -> Result<(), BError> {
+        let selected = get_requested_input("Pick a card to play", self.players[self.turn].hand.len());
+        println!();
+
+        println!("Selected {}", self.players[self.turn].hand[selected]);
+
+        match &self.players[self.turn].hand[selected] {
+            Card::Country(_) => self.manual_play_country(selected),
+            _ => Ok(())
+        }
+    }
+
+    fn manual_play_country(&mut self, card_index: usize) -> Result<(), BError> {
+        self.players[self.turn].play_country(card_index)
     }
 }
 

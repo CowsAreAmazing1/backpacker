@@ -10,6 +10,7 @@ dependencies = [
  "rand",
  "tabular",
  "term-painter",
+ "text_io",
 ]
 
 [[package]]
@@ -211,6 +212,12 @@ checksum = "5c63b9849d4c0a39cc60371c15c4bfc81001a73c27503a03932b9e8fb2fc5274"
 dependencies = [
  "term",
 ]
+
+[[package]]
+name = "text_io"
+version = "0.1.13"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4d8d3ca3b06292094e03841d8995e910712d2a10b5869c8f9725385b29761115"
 
 [[package]]
 name = "thiserror"

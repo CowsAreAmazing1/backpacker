@@ -177,7 +177,7 @@ impl Card {
 }
 
 
-use tabular::{Table, Row};
+// use tabular::{Table, Row};
 
 impl Board {
     pub fn turn_heading(&self) {
@@ -187,17 +187,44 @@ impl Board {
         println!("Player {}'s hand:", self.turn + 1);
         self.players[self.turn].hand.iter().enumerate().for_each(|(i, card)| println!("| {} {}", i, card));
 
-        let mut table = Table::new("| {:<}   | {:<}   | {:<}");
-        table.add_heading("./:");
+        println!();
 
-        for i in 0..self.players.iter().map(|p| p.pile.len()).max().unwrap_or(0) {
-            let mut row = Row::new();
-            for player in &self.players {
-                row.add_cell(&player.pile[i]);
+        for (i, p) in self.players.iter().enumerate() {
+            for (j, card) in p.pile.iter().enumerate() {
+                if j == 0 { println!("Player {}", i) };
+                println!("| {}", card);
             }
-            table.add_row(row);
         }
 
-        println!("{}", table);
+
+
+        // let mut row_spec = String::new();
+        // for _ in 0..self.players.len() {
+        //     row_spec.push_str("| {:<}   ");
+        // }
+
+        // let mut table = Table::new(&row_spec);
+
+        // let mut row = Row::new();
+        // for i in 0..self.players.len() {
+        //     row.add_cell(&format!("Player {}", i));
+        // }
+        // table.add_row(row);
+
+        // for i in 0..self.players.iter().map(|p| p.pile.len()).max().unwrap_or(0) {
+        //     let mut row = Row::new();
+        //     for player in &self.players {
+        //         let row_text = if let Some(country) = player.pile.get(i) {
+        //             format!("{}", country)
+        //         } else {
+        //             "".to_string()
+        //         };
+        //         row.add_cell(row_text);
+        //     }
+        //     println!("{}", row.len());
+        //     table.add_row(row);
+        // }
+
+        // println!("{}", table);
     }
 }
