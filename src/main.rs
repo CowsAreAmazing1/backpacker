@@ -1,9 +1,7 @@
-use backpacker::{Board, StatusType};
+use backpacker::Board;
 
 fn main() {
-    let mut board = Board::new_game(1);
-
-    board.players[0].add_status(StatusType::MissGo(10));
+    let mut board = Board::new_game(2);
 
     board.manual_game();
 }

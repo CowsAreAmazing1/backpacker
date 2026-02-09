@@ -2,7 +2,7 @@ use std::fmt::Display;
 
 use colored::{Colorize, CustomColor};
 
-use crate::{Advice, AdviceType, Board, Bonus, Card, Continent, Country, Player};
+use crate::{Advice, AdviceType, Board, Bonus, Card, Continent, Country, GreyType, Player};
 
 impl Display for Country {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -94,6 +94,16 @@ impl Display for Advice {
     }
 }
 
+impl Display for GreyType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let grey = CustomColor::new(120, 120, 120);
+
+        match self {
+            GreyType::MissedFlight => write!(f, "{}", "Missed Flight".custom_color(grey)),
+        }
+    }
+}
+
 impl Display for Card {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
@@ -101,6 +111,7 @@ impl Display for Card {
             Card::Bonus(bonus) => bonus.fmt(f),
             Card::Advice(advice) => advice.fmt(f),
             Card::Special(..) => write!(f, "soem special gy"),
+            Card::Grey(ty) => ty.fmt(f),
         }
     }
 }
@@ -208,6 +219,70 @@ impl Card {
             Card::Advice(Advice::new(true, AdviceType::Bureaucracy)),
             Card::Advice(Advice::new(false, AdviceType::Bureaucracy)),
             Card::Advice(Advice::new(false, AdviceType::Bureaucracy)),
+            // Grey
+            Card::Grey(GreyType::MissedFlight),
+            Card::Grey(GreyType::MissedFlight),
+            Card::Grey(GreyType::MissedFlight),
+            Card::Grey(GreyType::MissedFlight),
+            Card::Grey(GreyType::MissedFlight),
+            Card::Grey(GreyType::MissedFlight),
+            Card::Grey(GreyType::MissedFlight),
+            Card::Grey(GreyType::MissedFlight),
+            Card::Grey(GreyType::MissedFlight),
+            Card::Grey(GreyType::MissedFlight),
+            Card::Grey(GreyType::MissedFlight),
+            Card::Grey(GreyType::MissedFlight),
+            Card::Grey(GreyType::MissedFlight),
+            Card::Grey(GreyType::MissedFlight),
+            Card::Grey(GreyType::MissedFlight),
+            Card::Grey(GreyType::MissedFlight),
+            Card::Grey(GreyType::MissedFlight),
+            Card::Grey(GreyType::MissedFlight),
+            Card::Grey(GreyType::MissedFlight),
+            Card::Grey(GreyType::MissedFlight),
+            Card::Grey(GreyType::MissedFlight),
+            Card::Grey(GreyType::MissedFlight),
+            Card::Grey(GreyType::MissedFlight),
+            Card::Grey(GreyType::MissedFlight),
+            Card::Grey(GreyType::MissedFlight),
+            Card::Grey(GreyType::MissedFlight),
+            Card::Grey(GreyType::MissedFlight),
+            Card::Grey(GreyType::MissedFlight),
+            Card::Grey(GreyType::MissedFlight),
+            Card::Grey(GreyType::MissedFlight),
+            Card::Grey(GreyType::MissedFlight),
+            Card::Grey(GreyType::MissedFlight),
+            Card::Grey(GreyType::MissedFlight),
+            Card::Grey(GreyType::MissedFlight),
+            Card::Grey(GreyType::MissedFlight),
+            Card::Grey(GreyType::MissedFlight),
+            Card::Grey(GreyType::MissedFlight),
+            Card::Grey(GreyType::MissedFlight),
+            Card::Grey(GreyType::MissedFlight),
+            Card::Grey(GreyType::MissedFlight),
+            Card::Grey(GreyType::MissedFlight),
+            Card::Grey(GreyType::MissedFlight),
+            Card::Grey(GreyType::MissedFlight),
+            Card::Grey(GreyType::MissedFlight),
+            Card::Grey(GreyType::MissedFlight),
+            Card::Grey(GreyType::MissedFlight),
+            Card::Grey(GreyType::MissedFlight),
+            Card::Grey(GreyType::MissedFlight),
+            Card::Grey(GreyType::MissedFlight),
+            Card::Grey(GreyType::MissedFlight),
+            Card::Grey(GreyType::MissedFlight),
+            Card::Grey(GreyType::MissedFlight),
+            Card::Grey(GreyType::MissedFlight),
+            Card::Grey(GreyType::MissedFlight),
+            Card::Grey(GreyType::MissedFlight),
+            Card::Grey(GreyType::MissedFlight),
+            Card::Grey(GreyType::MissedFlight),
+            Card::Grey(GreyType::MissedFlight),
+            Card::Grey(GreyType::MissedFlight),
+            Card::Grey(GreyType::MissedFlight),
+            Card::Grey(GreyType::MissedFlight),
+            Card::Grey(GreyType::MissedFlight),
+            Card::Grey(GreyType::MissedFlight),
         ]
     }
 }
@@ -237,6 +312,8 @@ impl Board {
                 println!("| {}", card);
             }
         }
+
+        println!();
 
         // let mut row_spec = String::new();
         // for _ in 0..self.players.len() {

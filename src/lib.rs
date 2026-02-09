@@ -1,6 +1,6 @@
 #![allow(private_interfaces)]
 
-use std::{error::Error, fmt, io};
+use std::{error::Error, fmt, io, thread::sleep, time::Duration};
 
 use rand::prelude::*;
 use text_io::try_read;
@@ -8,8 +8,9 @@ use text_io::try_read;
 mod looks;
 
 const HAND_SIZE: usize = 5;
+const PAUSE_TIME: u64 = 700;
 
-#[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
 enum Bonus {
     Beach,
     Culture,
@@ -114,6 +115,11 @@ impl Advice {
     }
 }
 
+#[derive(Debug, Clone, Copy)]
+enum GreyType {
+    MissedFlight,
+}
+
 #[derive(Debug)]
 enum Special {
     CerditCard,
@@ -125,6 +131,7 @@ enum Card {
     Bonus(Bonus),
     Advice(Advice),
     Special(Special),
+    Grey(GreyType),
 }
 
 impl Card {
@@ -194,10 +201,13 @@ impl StatusHandler {
                 *gos -= 1;
 
                 self.cleanup();
+
+                sleep(Duration::from_millis(PAUSE_TIME));
                 return true;
             }
         }
 
+        sleep(Duration::from_millis(PAUSE_TIME));
         false
     }
 
@@ -211,7 +221,9 @@ impl StatusHandler {
 
 #[derive(Debug)]
 enum BError {
+    Custom(String),
     SameContinent,
+    GreyHeld,
 }
 
 impl Error for BError {}
@@ -219,7 +231,9 @@ impl Error for BError {}
 impl fmt::Display for BError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
+            Self::Custom(string) => write!(f, "{}", string),
             Self::SameContinent => write!(f, "too many countries of the same continent"),
+            Self::GreyHeld => write!(f, "you can't go home with grey cards"),
         }
     }
 }
@@ -230,6 +244,7 @@ pub struct Player {
     pile: Vec<Country>,
     score: u32,
     status: StatusHandler,
+    temp: Option<Card>,
 }
 
 impl Player {
@@ -239,6 +254,7 @@ impl Player {
             pile: vec![],
             score: 0,
             status: StatusHandler::empty(),
+            temp: None,
         }
     }
 
@@ -250,24 +266,35 @@ impl Player {
         self.pile.last_mut()
     }
 
-    fn can_go_home(&self) -> bool {
-        false
-    }
-
     pub fn add_status(&mut self, status: StatusType) {
         self.status.add_status(status);
     }
 
-    // fn go_home(&mut self) {
-    //     if !self.can_go_home() { panic!("This should be checked first") }
+    fn can_go_home(&self) -> bool {
+        self.hand.iter().any(|card| matches!(card, Card::Grey(_)))
+    }
 
-    //     let mut score = 0;
-    //     for card in &self.pile {
-    //         match card {
+    fn go_home(&mut self) -> Result<(), BError> {
+        if !self.can_go_home() {
+            return Err(BError::GreyHeld);
+        }
 
-    //         }
-    //     }
-    // }
+        self.score += self
+            .pile
+            .iter()
+            .map(|card| {
+                let Country {
+                    name: _,
+                    score,
+                    allowed_bonus: _,
+                    bonus,
+                } = card;
+                *score as u32 * (1 + bonus.len() as u32)
+            })
+            .sum::<u32>();
+
+        Ok(())
+    }
 
     fn can_play_country(&self, country: &Country) -> Result<(), BError> {
         let continent = country.continent();
@@ -349,6 +376,27 @@ impl Player {
         } else {
             self.hand.push(card);
             Err("Not a bonus card".to_string())
+        }
+    }
+
+    fn play_grey(&mut self, card_index: usize) -> Result<(), BError> {
+        if card_index >= self.hand.len() {
+            return Err(BError::Custom("Invalid index".to_string()));
+        }
+
+        let card = self.hand.swap_remove(card_index);
+
+        if let Card::Grey(grey) = card {
+            match grey {
+                GreyType::MissedFlight => {
+                    self.add_status(StatusType::MissGo(1));
+                    self.temp = Some(card);
+                    Ok(())
+                }
+            }
+        } else {
+            self.hand.push(card);
+            Err(BError::Custom("Not a grey card".to_string()))
         }
     }
 }
@@ -467,6 +515,7 @@ impl Board {
 
         let mut finished_turn = false;
         while !finished_turn {
+            sleep(Duration::from_millis(PAUSE_TIME));
             let res = self.manual_try_turn();
             match res {
                 Ok(_) => finished_turn = true,
@@ -480,14 +529,13 @@ impl Board {
         let current_player = &mut self.players[self.turn];
 
         if current_player.status.no_turn() {
-            println!("Missing turn for some reason (why?)");
             return Ok(());
         }
 
-        let mut selected = get_requested_input("Pick a card to play, or 0 to discard", |&inp| {
-            inp < self.players[self.turn].hand.len()
-        });
-        println!();
+        let mut selected =
+            get_requested_input("Pick a card to play, or 0 to discard, 10 to home", |&inp| {
+                inp <= self.players[self.turn].hand.len() || inp == 10
+            });
 
         if selected == 0 {
             let to_discard: usize = get_requested_input("Pick a card to discard", |&inp| {
@@ -496,19 +544,29 @@ impl Board {
             let to_discard = to_discard - 1;
             self.player_discard(to_discard);
             return Ok(());
+        } else if selected == 10 {
+            self.players[self.turn].go_home()?
         }
 
         // Allow for 1-based indexing for the user, and for 0 to represent a discard selection
         selected -= 1;
         println!("Selected {}", self.players[self.turn].hand[selected]);
 
-        match &self.players[self.turn].hand[selected] {
+        let out = match &self.players[self.turn].hand[selected] {
             Card::Country(_) => self.manual_play_country(selected),
+            Card::Grey(_) => self.manual_play_grey(selected),
             _ => Ok(()),
-        }
+        };
+        sleep(Duration::from_millis(PAUSE_TIME));
+
+        out
     }
 
     fn manual_play_country(&mut self, card_index: usize) -> Result<(), BError> {
         self.players[self.turn].play_country(card_index)
+    }
+
+    fn manual_play_grey(&mut self, card_index: usize) -> Result<(), BError> {
+        self.players[self.turn].play_grey(card_index)
     }
 }
