@@ -225,64 +225,6 @@ impl Card {
             Card::Grey(GreyType::MissedFlight),
             Card::Grey(GreyType::MissedFlight),
             Card::Grey(GreyType::MissedFlight),
-            Card::Grey(GreyType::MissedFlight),
-            Card::Grey(GreyType::MissedFlight),
-            Card::Grey(GreyType::MissedFlight),
-            Card::Grey(GreyType::MissedFlight),
-            Card::Grey(GreyType::MissedFlight),
-            Card::Grey(GreyType::MissedFlight),
-            Card::Grey(GreyType::MissedFlight),
-            Card::Grey(GreyType::MissedFlight),
-            Card::Grey(GreyType::MissedFlight),
-            Card::Grey(GreyType::MissedFlight),
-            Card::Grey(GreyType::MissedFlight),
-            Card::Grey(GreyType::MissedFlight),
-            Card::Grey(GreyType::MissedFlight),
-            Card::Grey(GreyType::MissedFlight),
-            Card::Grey(GreyType::MissedFlight),
-            Card::Grey(GreyType::MissedFlight),
-            Card::Grey(GreyType::MissedFlight),
-            Card::Grey(GreyType::MissedFlight),
-            Card::Grey(GreyType::MissedFlight),
-            Card::Grey(GreyType::MissedFlight),
-            Card::Grey(GreyType::MissedFlight),
-            Card::Grey(GreyType::MissedFlight),
-            Card::Grey(GreyType::MissedFlight),
-            Card::Grey(GreyType::MissedFlight),
-            Card::Grey(GreyType::MissedFlight),
-            Card::Grey(GreyType::MissedFlight),
-            Card::Grey(GreyType::MissedFlight),
-            Card::Grey(GreyType::MissedFlight),
-            Card::Grey(GreyType::MissedFlight),
-            Card::Grey(GreyType::MissedFlight),
-            Card::Grey(GreyType::MissedFlight),
-            Card::Grey(GreyType::MissedFlight),
-            Card::Grey(GreyType::MissedFlight),
-            Card::Grey(GreyType::MissedFlight),
-            Card::Grey(GreyType::MissedFlight),
-            Card::Grey(GreyType::MissedFlight),
-            Card::Grey(GreyType::MissedFlight),
-            Card::Grey(GreyType::MissedFlight),
-            Card::Grey(GreyType::MissedFlight),
-            Card::Grey(GreyType::MissedFlight),
-            Card::Grey(GreyType::MissedFlight),
-            Card::Grey(GreyType::MissedFlight),
-            Card::Grey(GreyType::MissedFlight),
-            Card::Grey(GreyType::MissedFlight),
-            Card::Grey(GreyType::MissedFlight),
-            Card::Grey(GreyType::MissedFlight),
-            Card::Grey(GreyType::MissedFlight),
-            Card::Grey(GreyType::MissedFlight),
-            Card::Grey(GreyType::MissedFlight),
-            Card::Grey(GreyType::MissedFlight),
-            Card::Grey(GreyType::MissedFlight),
-            Card::Grey(GreyType::MissedFlight),
-            Card::Grey(GreyType::MissedFlight),
-            Card::Grey(GreyType::MissedFlight),
-            Card::Grey(GreyType::MissedFlight),
-            Card::Grey(GreyType::MissedFlight),
-            Card::Grey(GreyType::MissedFlight),
-            Card::Grey(GreyType::MissedFlight),
         ]
     }
 }
@@ -295,6 +237,7 @@ impl Board {
         println!("--------------------------");
         println!("Its player {}'s turn", self.turn + 1);
 
+        // Current player's hand
         println!("Player {}'s hand:", self.turn + 1);
         self.players[self.turn]
             .hand
@@ -304,12 +247,22 @@ impl Board {
 
         println!();
 
-        for (i, p) in self.players.iter().enumerate() {
-            for (j, card) in p.pile.iter().enumerate() {
+        // All player's played piles
+        for (i, player) in self.players.iter().enumerate() {
+            for (j, card) in player.pile.iter().enumerate() {
                 if j == 0 {
                     println!("Player {}", i)
                 };
-                println!("| {}", card);
+                println!(
+                    "| {} - {}",
+                    card,
+                    card.allowed_bonus
+                    .to_uppercase()
+                    .custom_color(CustomColor::new(106, 229, 218))
+                );
+                for bonus in card.bonus.iter() {
+                    println!("| ↳ {}", bonus)
+                }
             }
         }
 

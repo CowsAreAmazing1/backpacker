@@ -10,7 +10,7 @@ mod looks;
 const HAND_SIZE: usize = 5;
 const PAUSE_TIME: u64 = 700;
 
-#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy, PartialOrd, Ord)]
 enum Bonus {
     Beach,
     Culture,
@@ -49,7 +49,7 @@ enum Continent {
     Oceania,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Eq, PartialOrd, Ord)]
 struct Country {
     name: String,
     score: u8,
@@ -95,7 +95,7 @@ impl PartialEq for Country {
     }
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
 enum AdviceType {
     Money,
     Bureaucracy,
@@ -103,7 +103,7 @@ enum AdviceType {
     Transport,
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
 struct Advice {
     good: bool,
     variant: AdviceType,
@@ -115,17 +115,17 @@ impl Advice {
     }
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 enum GreyType {
     MissedFlight,
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
 enum Special {
     CerditCard,
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
 enum Card {
     Country(Country),
     Bonus(Bonus),
@@ -207,7 +207,7 @@ impl StatusHandler {
             }
         }
 
-        sleep(Duration::from_millis(PAUSE_TIME));
+        // sleep(Duration::from_millis(PAUSE_TIME));
         false
     }
 
@@ -224,6 +224,8 @@ enum BError {
     Custom(String),
     SameContinent,
     GreyHeld,
+    InvalidBonus,
+    NoTopCountry,
 }
 
 impl Error for BError {}
@@ -233,7 +235,9 @@ impl fmt::Display for BError {
         match self {
             Self::Custom(string) => write!(f, "{}", string),
             Self::SameContinent => write!(f, "too many countries of the same continent"),
-            Self::GreyHeld => write!(f, "you can't go home with grey cards"),
+            Self::GreyHeld =>      write!(f, "you can't go home with grey cards"),
+            Self::InvalidBonus =>  write!(f, "can't play that bonus on your top country"),
+            Self::NoTopCountry =>  write!(f, "you need a played country to play a bonus"),
         }
     }
 }
@@ -249,13 +253,15 @@ pub struct Player {
 
 impl Player {
     fn from_hand(hand: Vec<Card>) -> Self {
-        Self {
+        let mut player = Self {
             hand,
             pile: vec![],
             score: 0,
             status: StatusHandler::empty(),
             temp: None,
-        }
+        };
+        player.sort_hand();
+        player
     }
 
     fn top_country(&self) -> Option<&Country> {
@@ -268,6 +274,10 @@ impl Player {
 
     pub fn add_status(&mut self, status: StatusType) {
         self.status.add_status(status);
+    }
+
+    fn sort_hand(&mut self) {
+        self.hand.sort();
     }
 
     fn can_go_home(&self) -> bool {
@@ -299,13 +309,11 @@ impl Player {
     fn can_play_country(&self, country: &Country) -> Result<(), BError> {
         let continent = country.continent();
 
-        let times_visited = self
-            .pile
+        let times_visited = self.pile
             .iter()
             .filter(|played| played.continent() == continent)
             .count();
-        let have_credit_card = self
-            .hand
+        let have_credit_card = self.hand
             .iter()
             .any(|card| matches!(card, Card::Special(Special::CerditCard)));
 
@@ -321,11 +329,6 @@ impl Player {
     }
 
     fn play_country(&mut self, card_index: usize) -> Result<(), BError> {
-        if card_index >= self.hand.len() {
-            // return Err("Invalid index".to_string());
-            panic!("This should be checked before calling `play_country`");
-        }
-
         let card = self.hand.swap_remove(card_index);
 
         if let Card::Country(country) = card {
@@ -333,49 +336,46 @@ impl Player {
                 self.hand.push(Card::Country(country));
                 Err(err)
             } else {
+                println!("Playing {}", &country);
                 self.pile.push(country);
                 Ok(())
             }
         } else {
             self.hand.push(card);
-            // Err("Not a country card".to_string())
             panic!("This should be checked before calling `play_country`");
         }
     }
 
-    fn can_play_bonus(&self, bonus: &Bonus) -> bool {
-        if let Some(top_country) = self.top_country()
-            && top_country.allowed_bonus.contains(bonus.unparse())
-        {
-            true
+    fn can_play_bonus(&self, bonus: &Bonus) -> Result<(), BError> {
+        if let Some(top_country) = self.top_country() {
+            if top_country.allowed_bonus.contains(bonus.unparse()) {
+                
+            } else {
+                return Err(BError::InvalidBonus);
+            }
         } else {
-            false
+            return Err(BError::NoTopCountry)
         }
+
+        Ok(())
     }
 
-    fn play_bonus(&mut self, card_index: usize) -> Result<(), String> {
-        if card_index >= self.hand.len() {
-            return Err("Invalid index".to_string());
-        }
-
+    fn play_bonus(&mut self, card_index: usize) -> Result<(), BError> {
         let card = self.hand.swap_remove(card_index);
 
         if let Card::Bonus(bonus) = card {
-            if let Some(top_country) = self.top_country_mut() {
-                if top_country.allowed_bonus.contains(bonus.unparse()) {
-                    top_country.bonus.push(bonus);
-                    Ok(())
-                } else {
-                    self.hand.push(Card::Bonus(bonus));
-                    Err("Cant play this bonus on the top country".to_string())
-                }
-            } else {
+            if let Err(err) = self.can_play_bonus(&bonus) {
                 self.hand.push(Card::Bonus(bonus));
-                Err("No country on played pile".to_string())
+                Err(err)
+            } else {
+                let top_country = self.top_country_mut().unwrap();
+                println!("Playing {} on {}", &bonus, &top_country);
+                top_country.bonus.push(bonus);
+                Ok(())
             }
         } else {
             self.hand.push(card);
-            Err("Not a bonus card".to_string())
+            panic!("This should be checked before calling `play_country`");
         }
     }
 
@@ -522,6 +522,7 @@ impl Board {
                 Err(e) => println!("{}", e),
             }
         }
+        self.players[self.turn].sort_hand();
         self.next_turn();
     }
 
@@ -545,7 +546,7 @@ impl Board {
             self.player_discard(to_discard);
             return Ok(());
         } else if selected == 10 {
-            self.players[self.turn].go_home()?
+            return self.players[self.turn].go_home();
         }
 
         // Allow for 1-based indexing for the user, and for 0 to represent a discard selection
@@ -553,8 +554,9 @@ impl Board {
         println!("Selected {}", self.players[self.turn].hand[selected]);
 
         let out = match &self.players[self.turn].hand[selected] {
+            Card::Bonus(_)   => self.manual_play_bonus(selected),
             Card::Country(_) => self.manual_play_country(selected),
-            Card::Grey(_) => self.manual_play_grey(selected),
+            Card::Grey(_)    => self.manual_play_grey(selected),
             _ => Ok(()),
         };
         sleep(Duration::from_millis(PAUSE_TIME));
@@ -562,6 +564,10 @@ impl Board {
         out
     }
 
+    fn manual_play_bonus(&mut self, card_index: usize) -> Result<(), BError> {
+        self.players[self.turn].play_bonus(card_index)
+    }
+    
     fn manual_play_country(&mut self, card_index: usize) -> Result<(), BError> {
         self.players[self.turn].play_country(card_index)
     }
