@@ -2,7 +2,7 @@ use std::fmt::Display;
 
 use colored::{Colorize, CustomColor};
 
-use crate::{Advice, AdviceType, Board, Bonus, Card, Continent, Country, GreyType, Player};
+use crate::{Advice, AdviceType, Board, Bonus, Card, Continent, Country, GreyType, Player, Special};
 
 impl Display for Country {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -104,14 +104,22 @@ impl Display for GreyType {
     }
 }
 
+impl Display for Special {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::CerditCard => write!(f, "{}", "Credit Card".custom_color(CustomColor::new(231, 157, 72))),
+        }
+    }
+}
+
 impl Display for Card {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Card::Country(country) => country.fmt(f),
-            Card::Bonus(bonus) => bonus.fmt(f),
-            Card::Advice(advice) => advice.fmt(f),
-            Card::Special(..) => write!(f, "soem special gy"),
-            Card::Grey(ty) => ty.fmt(f),
+            Card::Bonus(bonus)       => bonus.fmt(f),
+            Card::Advice(advice)    => advice.fmt(f),
+            Card::Special(special) => special.fmt(f),
+            Card::Grey(ty)        => ty.fmt(f),
         }
     }
 }
@@ -225,6 +233,8 @@ impl Card {
             Card::Grey(GreyType::MissedFlight),
             Card::Grey(GreyType::MissedFlight),
             Card::Grey(GreyType::MissedFlight),
+            //Special
+            Card::Special(Special::CerditCard),
         ]
     }
 }

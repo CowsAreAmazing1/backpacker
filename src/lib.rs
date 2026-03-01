@@ -161,7 +161,7 @@ impl Card {
 }
 
 #[derive(Debug, PartialEq)]
-pub enum StatusType {
+enum StatusType {
     // Player will miss their next go(s)
     MissGo(u8),
     // ??
@@ -222,9 +222,13 @@ impl StatusHandler {
 #[derive(Debug)]
 enum BError {
     Custom(String),
+    // Attempted to play countries of the same continent, (2 without credit card or 3 with credit card)
     SameContinent,
+    // Attempted to go home with grey card(s)
     GreyHeld,
+    // Attempted to play bonus on country not supporting it
     InvalidBonus,
+    // Attempted to play bonus without top country
     NoTopCountry,
 }
 
@@ -235,15 +239,15 @@ impl fmt::Display for BError {
         match self {
             Self::Custom(string) => write!(f, "{}", string),
             Self::SameContinent => write!(f, "too many countries of the same continent"),
-            Self::GreyHeld =>      write!(f, "you can't go home with grey cards"),
-            Self::InvalidBonus =>  write!(f, "can't play that bonus on your top country"),
-            Self::NoTopCountry =>  write!(f, "you need a played country to play a bonus"),
+            Self::GreyHeld => write!(f, "you can't go home with grey cards"),
+            Self::InvalidBonus => write!(f, "can't play that bonus on your top country"),
+            Self::NoTopCountry => write!(f, "you need a played country to play a bonus"),
         }
     }
 }
 
 #[derive(Debug)]
-pub struct Player {
+struct Player {
     hand: Vec<Card>,
     pile: Vec<Country>,
     score: u32,
@@ -280,16 +284,17 @@ impl Player {
         self.hand.sort();
     }
 
-    fn can_go_home(&self) -> bool {
-        self.hand.iter().any(|card| matches!(card, Card::Grey(_)))
-    }
-
-    fn go_home(&mut self) -> Result<(), BError> {
-        if !self.can_go_home() {
+    fn can_go_home(&self) -> Result<(), BError> {
+        if self.hand.iter().any(|card| matches!(card, Card::Grey(_))) {
             return Err(BError::GreyHeld);
         }
+        Ok(())
+    }
 
-        self.score += self
+    fn go_home(&mut self) -> Result<Vec<Card>, BError> {
+        self.can_go_home()?;
+
+        let to_add = self
             .pile
             .iter()
             .map(|card| {
@@ -303,17 +308,30 @@ impl Player {
             })
             .sum::<u32>();
 
-        Ok(())
+        println!("Adding {} points", to_add);
+        self.score += to_add;
+
+        let mut cards = Vec::new();
+        for mut country in self.pile.drain(..) {
+            for bonus in country.bonus.drain(..) {
+                cards.push(Card::Bonus(bonus));
+            }
+            cards.push(Card::Country(country));
+        }
+
+        Ok(cards)
     }
 
     fn can_play_country(&self, country: &Country) -> Result<(), BError> {
         let continent = country.continent();
 
-        let times_visited = self.pile
+        let times_visited = self
+            .pile
             .iter()
             .filter(|played| played.continent() == continent)
             .count();
-        let have_credit_card = self.hand
+        let have_credit_card = self
+            .hand
             .iter()
             .any(|card| matches!(card, Card::Special(Special::CerditCard)));
 
@@ -348,13 +366,11 @@ impl Player {
 
     fn can_play_bonus(&self, bonus: &Bonus) -> Result<(), BError> {
         if let Some(top_country) = self.top_country() {
-            if top_country.allowed_bonus.contains(bonus.unparse()) {
-                
-            } else {
+            if !top_country.allowed_bonus.contains(bonus.unparse()) {
                 return Err(BError::InvalidBonus);
             }
         } else {
-            return Err(BError::NoTopCountry)
+            return Err(BError::NoTopCountry);
         }
 
         Ok(())
@@ -436,7 +452,7 @@ where
 pub struct Board {
     future: Vec<Card>,
     past: Vec<Card>,
-    pub players: Vec<Player>,
+    players: Vec<Player>,
     turn: usize,
 }
 
@@ -509,30 +525,37 @@ impl Board {
     }
 
     fn manual_turn(&mut self) {
-        // match get_requested_input("Go home?: ", 1) {
-        //     1 => self.players[self.turn].go_home(),
-        // }
+        if self.players[self.turn].status.no_turn() {
+            return;
+        }
 
-        let mut finished_turn = false;
-        while !finished_turn {
+        if 1 == get_requested_input("Go home?: ", |_| true) {
+            match self.players[self.turn].go_home() {
+                Ok(mut cards) => {
+                    self.past.append(&mut cards);
+                }
+                Err(e) => {
+                    println!("{}", e);
+                }
+            }
             sleep(Duration::from_millis(PAUSE_TIME));
-            let res = self.manual_try_turn();
-            match res {
-                Ok(_) => finished_turn = true,
-                Err(e) => println!("{}", e),
+        } else {
+            let mut finished_turn = false;
+            while !finished_turn {
+                sleep(Duration::from_millis(PAUSE_TIME));
+                let res = self.manual_try_turn();
+                match res {
+                    Ok(_) => finished_turn = true,
+                    Err(e) => println!("{}", e),
+                }
             }
         }
+
         self.players[self.turn].sort_hand();
         self.next_turn();
     }
 
     fn manual_try_turn(&mut self) -> Result<(), BError> {
-        let current_player = &mut self.players[self.turn];
-
-        if current_player.status.no_turn() {
-            return Ok(());
-        }
-
         let mut selected =
             get_requested_input("Pick a card to play, or 0 to discard, 10 to home", |&inp| {
                 inp <= self.players[self.turn].hand.len() || inp == 10
@@ -545,8 +568,6 @@ impl Board {
             let to_discard = to_discard - 1;
             self.player_discard(to_discard);
             return Ok(());
-        } else if selected == 10 {
-            return self.players[self.turn].go_home();
         }
 
         // Allow for 1-based indexing for the user, and for 0 to represent a discard selection
@@ -554,9 +575,9 @@ impl Board {
         println!("Selected {}", self.players[self.turn].hand[selected]);
 
         let out = match &self.players[self.turn].hand[selected] {
-            Card::Bonus(_)   => self.manual_play_bonus(selected),
+            Card::Bonus(_) => self.manual_play_bonus(selected),
             Card::Country(_) => self.manual_play_country(selected),
-            Card::Grey(_)    => self.manual_play_grey(selected),
+            Card::Grey(_) => self.manual_play_grey(selected),
             _ => Ok(()),
         };
         sleep(Duration::from_millis(PAUSE_TIME));
@@ -567,7 +588,7 @@ impl Board {
     fn manual_play_bonus(&mut self, card_index: usize) -> Result<(), BError> {
         self.players[self.turn].play_bonus(card_index)
     }
-    
+
     fn manual_play_country(&mut self, card_index: usize) -> Result<(), BError> {
         self.players[self.turn].play_country(card_index)
     }
