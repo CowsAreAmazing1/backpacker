@@ -1,8 +1,11 @@
-use backpacker::Board;
+use backpacker::GameEgui;
 
-fn main() {
-    let mut board = Board::new_game(2);
-    board.manual_game();
+fn main() -> eframe::Result<()> {
+    eframe::run_native(
+        "grahpher",
+        eframe::NativeOptions::default(),
+        Box::new(|cc| Ok(Box::new(GameEgui::new(cc)))),
+    )
 }
 
 // let to_have = [

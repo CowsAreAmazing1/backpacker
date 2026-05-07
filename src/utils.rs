@@ -1,0 +1,60 @@
+use std::{error::Error, fmt};
+
+#[derive(Debug)]
+pub(crate) enum BError {
+    Custom(String),
+    // Attempted to play countries of the same continent, (2 without credit card or 3 with credit card)
+    SameContinent,
+    // Attempted to go home with grey card(s)
+    GreyHeld,
+    // Attempted to play bonus on country not supporting it
+    InvalidBonus,
+    // Attempted to play bonus without top country
+    NoTopCountry,
+}
+
+impl Error for BError {}
+
+impl fmt::Display for BError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Custom(string) => write!(f, "{}", string),
+            Self::SameContinent => write!(f, "too many countries of the same continent"),
+            Self::GreyHeld => write!(f, "you can't go home with grey cards"),
+            Self::InvalidBonus => write!(f, "can't play that bonus on your top country"),
+            Self::NoTopCountry => write!(f, "you need a played country to play a bonus"),
+        }
+    }
+}
+
+fn read_line() -> Result<String, std::io::Error> {
+    let mut buffer = String::new();
+    let stdin = std::io::stdin(); // We get `Stdin` here.
+    stdin.read_line(&mut buffer)?;
+    Ok(buffer)
+}
+
+pub(crate) fn get_requested_input<T, F>(message: &str, condition: F) -> T
+where
+    T: PartialOrd + std::str::FromStr<Err: std::fmt::Debug>,
+    F: Fn(&T) -> bool,
+{
+    let mut output = None;
+    while output.is_none() {
+        println!("{}", message);
+        let inp_opt = text_io::try_read!();
+
+        match inp_opt {
+            Ok(inp) => {
+                if condition(&inp) {
+                    output = Some(inp);
+                } else {
+                    println!("Invalid value\n");
+                }
+            }
+            Err(_) => println!("Error reading input\n"),
+        }
+    }
+
+    output.unwrap()
+}
