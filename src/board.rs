@@ -5,6 +5,10 @@ use rand::seq::SliceRandom;
 
 use crate::{HAND_SIZE, PAUSE_TIME, cards::card::Card, player::Player, utils::BError};
 
+pub(crate) enum BoardMove {
+    PlayCard(usize),
+}
+
 pub(crate) struct Board {
     future: Vec<Card>,
     past: Vec<Card>,
@@ -56,12 +60,21 @@ impl Board {
         }
     }
 
+    pub(crate) fn current_turn(&self) -> usize {
+        self.turn
+    }
+
     fn next_turn(&mut self) {
         if self.turn == self.players.len() - 1 {
             self.turn = 0;
         } else {
             self.turn += 1;
         }
+    }
+
+    fn end_turn(&mut self) {
+        self.players[self.turn].sort_hand();
+        self.next_turn();
     }
 
     fn discard(&mut self, card: Card) {
@@ -71,6 +84,33 @@ impl Board {
     fn player_discard(&mut self, card_index: usize) {
         let card = self.players[self.turn].swap_remove(card_index);
         self.discard(card);
+    }
+
+    pub(crate) fn make_move(&mut self, action: BoardMove) -> Result<(), BError> {
+        let result = match action {
+            BoardMove::PlayCard(card_index) => self.play_card(card_index),
+        };
+
+        if result.is_ok() {
+            self.end_turn();
+        }
+
+        result
+    }
+
+    fn play_card(&mut self, card_index: usize) -> Result<(), BError> {
+        if card_index >= self.players[self.turn].hand_len() {
+            return Err(BError::Custom("Invalid card index".to_string()));
+        }
+
+        match self.players[self.turn].get(card_index) {
+            Card::Bonus(_) => self.players[self.turn].play_bonus(card_index),
+            Card::Country(_) => self.players[self.turn].play_country(card_index),
+            Card::Grey(_) => self.players[self.turn].play_grey(card_index),
+            _ => Err(BError::Custom(
+                "That card cannot be played from the hand right now".to_string(),
+            )),
+        }
     }
 
     pub(crate) fn manual_game(&mut self) {
@@ -94,6 +134,7 @@ impl Board {
                     println!("{}", e);
                 }
             }
+            self.end_turn();
             sleep(Duration::from_millis(PAUSE_TIME));
         } else {
             let mut finished_turn = false;
@@ -106,9 +147,6 @@ impl Board {
                 }
             }
         }
-
-        self.players[self.turn].sort_hand();
-        self.next_turn();
     }
 
     fn manual_try_turn(&mut self) -> Result<(), BError> {
@@ -132,26 +170,16 @@ impl Board {
         println!("Selected {}", self.players[self.turn].get(selected));
 
         let out = match self.players[self.turn].get(selected) {
-            Card::Bonus(_) => self.manual_play_bonus(selected),
-            Card::Country(_) => self.manual_play_country(selected),
-            Card::Grey(_) => self.manual_play_grey(selected),
-            _ => Ok(()),
+            Card::Bonus(_) | Card::Country(_) | Card::Grey(_) => {
+                self.make_move(BoardMove::PlayCard(selected))
+            }
+            _ => Err(BError::Custom(
+                "That card cannot be played from the hand right now".to_string(),
+            )),
         };
         sleep(Duration::from_millis(PAUSE_TIME));
 
         out
-    }
-
-    fn manual_play_bonus(&mut self, card_index: usize) -> Result<(), BError> {
-        self.players[self.turn].play_bonus(card_index)
-    }
-
-    fn manual_play_country(&mut self, card_index: usize) -> Result<(), BError> {
-        self.players[self.turn].play_country(card_index)
-    }
-
-    fn manual_play_grey(&mut self, card_index: usize) -> Result<(), BError> {
-        self.players[self.turn].play_grey(card_index)
     }
 
     pub fn turn_heading(&self) {

@@ -1,6 +1,13 @@
-use colored::{Colorize, CustomColor};
+use colored::Colorize;
 
-use crate::cards::bonus::Bonus;
+use crate::cards::{bonus::Bonus, card::RenderableCard};
+
+const AFRICA: (u8, u8, u8) = (134, 80, 29);
+const ASIA: (u8, u8, u8) = (196, 181, 61);
+const AMERICA: (u8, u8, u8) = (234, 83, 119);
+const ANTARCTICA: (u8, u8, u8) = (220, 220, 220);
+const EUROPE: (u8, u8, u8) = (118, 72, 141);
+const OCEANIA: (u8, u8, u8) = (113, 209, 164);
 
 #[derive(Debug, PartialEq, Eq)]
 pub(crate) enum Continent {
@@ -78,36 +85,28 @@ impl PartialEq for Country {
 impl std::fmt::Display for Country {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self.continent() {
-            Continent::Africa => write!(
-                f,
-                "{}",
-                self.name.custom_color(CustomColor::new(134, 80, 29))
-            ),
-            Continent::Asia => write!(
-                f,
-                "{}",
-                self.name.custom_color(CustomColor::new(196, 181, 61))
-            ),
-            Continent::America => write!(
-                f,
-                "{}",
-                self.name.custom_color(CustomColor::new(234, 83, 119))
-            ),
-            Continent::Antarctica => write!(
-                f,
-                "{}",
-                self.name.custom_color(CustomColor::new(220, 220, 220))
-            ),
-            Continent::Europe => write!(
-                f,
-                "{}",
-                self.name.custom_color(CustomColor::new(118, 72, 141))
-            ),
-            Continent::Oceania => write!(
-                f,
-                "{}",
-                self.name.custom_color(CustomColor::new(113, 209, 164))
-            ),
+            Continent::Africa => write!(f, "{}", self.name.custom_color(AFRICA)),
+            Continent::Asia => write!(f, "{}", self.name.custom_color(ASIA)),
+            Continent::America => write!(f, "{}", self.name.custom_color(AMERICA)),
+            Continent::Antarctica => write!(f, "{}", self.name.custom_color(ANTARCTICA)),
+            Continent::Europe => write!(f, "{}", self.name.custom_color(EUROPE)),
+            Continent::Oceania => write!(f, "{}", self.name.custom_color(OCEANIA)),
         }
+    }
+}
+
+impl RenderableCard for Country {
+    fn render_info(&self) -> (String, egui::Color32) {
+        let color = match self.continent() {
+            Continent::Africa => egui::Color32::from_rgb(AFRICA.0, AFRICA.1, AFRICA.2),
+            Continent::Asia => egui::Color32::from_rgb(ASIA.0, ASIA.1, ASIA.2),
+            Continent::America => egui::Color32::from_rgb(AMERICA.0, AMERICA.1, AMERICA.2),
+            Continent::Antarctica => {
+                egui::Color32::from_rgb(ANTARCTICA.0, ANTARCTICA.1, ANTARCTICA.2)
+            }
+            Continent::Europe => egui::Color32::from_rgb(EUROPE.0, EUROPE.1, EUROPE.2),
+            Continent::Oceania => egui::Color32::from_rgb(OCEANIA.0, OCEANIA.1, OCEANIA.2),
+        };
+        (self.name.to_string(), color)
     }
 }

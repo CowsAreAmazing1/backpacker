@@ -1,4 +1,7 @@
-use colored::{Colorize, CustomColor};
+use colored::Colorize;
+
+const GOOD_ADVICE: (u8, u8, u8) = (12, 186, 74);
+const BAD_ADVICE: (u8, u8, u8) = (248, 30, 88);
 
 /// Advice flavour enum, used for good and bad advice cards.
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
@@ -31,6 +34,16 @@ impl Advice {
             AdviceType::Transport => format!("{} Transport", pre),
         }
     }
+
+    pub(crate) fn render_info(&self) -> (String, egui::Color32) {
+        let text = self.raw_display();
+        let color = if self.good {
+            egui::Color32::from_rgb(GOOD_ADVICE.0, GOOD_ADVICE.1, GOOD_ADVICE.2)
+        } else {
+            egui::Color32::from_rgb(BAD_ADVICE.0, BAD_ADVICE.1, BAD_ADVICE.2)
+        };
+        (text, color)
+    }
 }
 
 impl std::fmt::Display for Advice {
@@ -42,13 +55,13 @@ impl std::fmt::Display for Advice {
         let pre = if self.good { "Good" } else { "Bad" };
         let (c1, c2) = if self.good {
             (
-                CustomColor::new(12, 186, 74),
-                CustomColor::new(81, 255, 143),
+                GOOD_ADVICE, // CustomColor::new(12, 186, 74), // -TODO: maybe use different colors for the text Good/Bad and the type text?
+                GOOD_ADVICE, // CustomColor::new(81, 255, 143),
             )
         } else {
             (
-                CustomColor::new(248, 30, 88),
-                CustomColor::new(248, 73, 119),
+                BAD_ADVICE, // CustomColor::new(248, 30, 88),
+                BAD_ADVICE, // CustomColor::new(248, 73, 119),
             )
         };
 

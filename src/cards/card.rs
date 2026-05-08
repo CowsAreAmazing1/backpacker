@@ -6,6 +6,10 @@ use crate::cards::{
     special::Special,
 };
 
+pub(crate) trait RenderableCard {
+    fn render_info(&self) -> (String, egui::Color32);
+}
+
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub(crate) enum Card {
     Country(Country),
@@ -135,6 +139,16 @@ impl Card {
             //Special
             Card::Special(Special::CerditCard),
         ]
+    }
+
+    pub(crate) fn render_info(&self) -> (String, egui::Color32) {
+        match self {
+            Card::Country(country) => country.render_info(),
+            Card::Bonus(bonus) => bonus.render_info(),
+            Card::Advice(advice) => advice.render_info(),
+            Card::Special(special) => special.render_info(),
+            Card::Grey(ty) => ty.render_info(),
+        }
     }
 }
 

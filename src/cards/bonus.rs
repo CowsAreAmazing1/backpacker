@@ -1,4 +1,8 @@
-use colored::{Colorize, CustomColor};
+use colored::Colorize;
+
+use crate::cards::card::RenderableCard;
+
+const BONUS: (u8, u8, u8) = (106, 229, 218);
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy, PartialOrd, Ord)]
 pub(crate) enum Bonus {
@@ -43,7 +47,7 @@ impl Bonus {
 
 impl std::fmt::Display for Bonus {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let color = CustomColor::new(106, 229, 218);
+        let color = BONUS;
 
         match self {
             Bonus::Beach => write!(f, "{}", "Beach Bonus".custom_color(color)),
@@ -51,5 +55,12 @@ impl std::fmt::Display for Bonus {
             Bonus::Trekking => write!(f, "{}", "Trekking Bonus".custom_color(color)),
             Bonus::Wildlife => write!(f, "{}", "Wildlife Bonus".custom_color(color)),
         }
+    }
+}
+
+impl RenderableCard for Bonus {
+    fn render_info(&self) -> (String, egui::Color32) {
+        let color = egui::Color32::from_rgb(BONUS.0, BONUS.1, BONUS.2);
+        (self.raw_display(), color)
     }
 }
