@@ -1,3 +1,8 @@
+use itertools::{
+    EitherOrBoth::{self, *},
+    Itertools, ZipLongest,
+};
+
 use crate::{
     board::{Board, BoardMove},
     cards::card::RenderableCard,
@@ -49,12 +54,38 @@ impl eframe::App for GameEgui {
         // self.board.turn_heading();
         // self.board.manual_turn();
 
-        egui::CentralPanel::default().show(ctx, |ui| {
+        egui::SidePanel::left("game info").show(ctx, |ui| {
             ui.heading(format!("Player {}'s turn", self.board.current_turn() + 1));
             if let Some(message) = &self.status_message {
                 ui.label(message);
             }
 
+            ui.separator();
+
+            egui::Grid::new("card storage").show(ui, |ui| {
+                ui.label("Future".to_string());
+                ui.label("Past".to_string());
+                ui.end_row();
+
+                for pair in self.board.future.iter().zip_longest(self.board.past.iter()) {
+                    match pair {
+                        EitherOrBoth::Both(future_card, past_card) => {
+                            draw_card(ui, future_card, "".to_string(), false);
+                            draw_card(ui, past_card, "".to_string(), false);
+                        }
+                        EitherOrBoth::Left(future_card) => {
+                            draw_card(ui, future_card, "".to_string(), false);
+                        }
+                        EitherOrBoth::Right(past_card) => {
+                            draw_card(ui, past_card, "".to_string(), false);
+                        }
+                    };
+                    ui.end_row();
+                }
+            })
+        });
+
+        egui::CentralPanel::default().show(ctx, |ui| {
             // Player info section
             egui::Grid::new("some id").show(ui, |ui| {
                 // Player `i` headings

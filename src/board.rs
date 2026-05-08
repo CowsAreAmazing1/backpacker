@@ -10,8 +10,8 @@ pub(crate) enum BoardMove {
 }
 
 pub(crate) struct Board {
-    future: Vec<Card>,
-    past: Vec<Card>,
+    pub(crate) future: Vec<Card>,
+    pub(crate) past: Vec<Card>,
     pub(crate) players: Vec<Player>,
     turn: usize,
 }
