@@ -9,6 +9,7 @@ pub(crate) enum Bonus {
 }
 
 impl Bonus {
+    /// Parses a char into a `Bonus` enum variant.
     pub(crate) fn parse(input: &char) -> Self {
         match input {
             'b' => Self::Beach,
@@ -19,12 +20,23 @@ impl Bonus {
         }
     }
 
+    /// Converts a `Bonus` enum variant back into its corresponding char.
     pub(crate) fn unparse(&self) -> char {
         match self {
             Self::Beach => 'b',
             Self::Culture => 'c',
             Self::Trekking => 't',
             Self::Wildlife => 'w',
+        }
+    }
+
+    /// Raw string representation of the `Bonus`.
+    pub(crate) fn raw_display(&self) -> String {
+        match self {
+            Bonus::Beach => "Beach Bonus".to_string(),
+            Bonus::Culture => "Culture Bonus".to_string(),
+            Bonus::Trekking => "Trekking Bonus".to_string(),
+            Bonus::Wildlife => "Wildlife Bonus".to_string(),
         }
     }
 }

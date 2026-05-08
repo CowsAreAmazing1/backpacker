@@ -1,7 +1,18 @@
 use colored::{Colorize, CustomColor};
 
-use crate::cards::{bonus::Bonus, continent::Continent};
+use crate::cards::bonus::Bonus;
 
+#[derive(Debug, PartialEq, Eq)]
+pub(crate) enum Continent {
+    Africa,
+    America,
+    Antarctica,
+    Asia,
+    Europe,
+    Oceania,
+}
+
+/// Country card struct,
 #[derive(Debug, Clone, Eq, PartialOrd, Ord)]
 pub(crate) struct Country {
     pub(crate) name: String,
@@ -20,6 +31,7 @@ impl Country {
         }
     }
 
+    /// Determines the continent of the country based on its name. This is used for repeated continent logic and display coloring.
     pub(crate) fn continent(&self) -> Continent {
         match self.name.as_str() {
             "Mali" | "Egypt" | "Kenya" | "Morocco" | "Uganda" | "South Africa" | "Zimbabwe" => {
@@ -41,12 +53,19 @@ impl Country {
         }
     }
 
+    /// Returns the total score of the country, including all attatched bonuses, given by `score * (1 + bonus_count)`.
     pub(crate) fn total_score(&self) -> u32 {
         self.score as u32 * (1 + self.bonus.len() as u32)
     }
 
+    /// Drains all `Bonus`es from this `Country` which resets the card for discarding, and returns an iterator over the drained bonuses so they can be handled separately.
     pub(crate) fn drain_bonus(&mut self) -> impl Iterator<Item = Bonus> {
         self.bonus.drain(..)
+    }
+
+    /// Raw string representation of the `Country` card. -TODO: Does not include any bonus information
+    pub(crate) fn raw_display(&self) -> String {
+        self.name.to_string()
     }
 }
 

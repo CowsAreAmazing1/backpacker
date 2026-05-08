@@ -1,5 +1,6 @@
 use colored::{Colorize, CustomColor};
 
+/// Advice flavour enum, used for good and bad advice cards.
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub(crate) enum AdviceType {
     Money,
@@ -8,6 +9,7 @@ pub(crate) enum AdviceType {
     Transport,
 }
 
+/// Advice card struct, describing the flavour and goodness.
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub(crate) struct Advice {
     good: bool,
@@ -17,6 +19,17 @@ pub(crate) struct Advice {
 impl Advice {
     pub(crate) fn new(good: bool, variant: AdviceType) -> Self {
         Self { good, variant }
+    }
+
+    /// Raw string representation of the `Advice` card.
+    pub(crate) fn raw_display(&self) -> String {
+        let pre = if self.good { "Good" } else { "Bad" };
+        match self.variant {
+            AdviceType::Money => "Money Talks".to_string(),
+            AdviceType::Bureaucracy => format!("{} Bureaucracy", pre),
+            AdviceType::Timing => format!("{} Timing", pre),
+            AdviceType::Transport => format!("{} Transport", pre),
+        }
     }
 }
 

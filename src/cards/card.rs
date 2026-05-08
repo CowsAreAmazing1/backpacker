@@ -40,6 +40,16 @@ impl Card {
         }
     }
 
+    pub(crate) fn raw_display(&self) -> String {
+        match self {
+            Card::Country(country) => country.raw_display(),
+            Card::Bonus(bonus) => bonus.raw_display(),
+            Card::Advice(advice) => advice.raw_display(),
+            Card::Special(special) => special.raw_display(),
+            Card::Grey(ty) => ty.raw_display(),
+        }
+    }
+
     pub fn deck() -> Vec<Self> {
         vec![
             // Africa

@@ -5,6 +5,14 @@ pub(crate) enum GreyType {
     MissedFlight,
 }
 
+impl GreyType {
+    pub(crate) fn raw_display(&self) -> String {
+        match self {
+            GreyType::MissedFlight => "Missed Flight".to_string(),
+        }
+    }
+}
+
 impl std::fmt::Display for GreyType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let grey = CustomColor::new(120, 120, 120);

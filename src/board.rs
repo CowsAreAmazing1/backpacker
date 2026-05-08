@@ -73,14 +73,14 @@ impl Board {
         self.discard(card);
     }
 
-    pub fn manual_game(&mut self) {
+    pub(crate) fn manual_game(&mut self) {
         while !self.future.is_empty() {
             self.turn_heading();
             self.manual_turn();
         }
     }
 
-    fn manual_turn(&mut self) {
+    pub(crate) fn manual_turn(&mut self) {
         if self.players[self.turn].no_turn() {
             return;
         }
