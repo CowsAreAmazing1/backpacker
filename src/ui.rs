@@ -1,5 +1,3 @@
-use egui::Button;
-
 use crate::{
     board::{Board, BoardMove},
     cards::card::RenderableCard,
@@ -21,14 +19,22 @@ impl GameEgui {
     }
 }
 
-fn draw_card<C: RenderableCard>(ui: &mut egui::Ui, card: &C, prefix: String) -> bool {
+fn draw_card<C: RenderableCard>(
+    ui: &mut egui::Ui,
+    card: &C,
+    prefix: String,
+    enabled: bool,
+) -> bool {
     let mut clicked = false;
     let (text, color) = card.render_info();
-    let button = Button::new("").fill(color).small();
-    ui.horizontal(|ui| {
-        ui.label(prefix);
-        clicked = ui.add(button).clicked();
-        ui.label(text.to_string());
+    let button = egui::Button::new("").fill(color).small();
+
+    ui.add_enabled_ui(enabled, |ui| {
+        ui.horizontal(|ui| {
+            ui.label(prefix);
+            clicked = ui.add(button).clicked();
+            ui.label(text.to_string());
+        });
     });
 
     clicked
@@ -60,109 +66,46 @@ impl eframe::App for GameEgui {
                 // Hands, shown in vertical groups, listing each card and a button
                 for player_idx in 0..self.board.players.len() {
                     let is_active_player = player_idx == self.board.current_turn();
-                    let hand: Vec<_> = self.board.players[player_idx]
-                        .iter_hand()
-                        .enumerate()
-                        .map(|(card_idx, card)| {
-                            let (text, color) = card.render_info();
-                            (card_idx, text, color)
-                        })
-                        .collect();
+                    let mut played_card_idx = None;
 
                     ui.group(|ui| {
                         ui.vertical(|ui| {
-                            for (card_idx, text, color) in hand {
-                                ui.horizontal(|ui| {
-                                    if is_active_player {
-                                        let button = Button::new("").fill(color).small();
-                                        if ui.add(button).clicked() {
-                                            match self
-                                                .board
-                                                .make_move(BoardMove::PlayCard(card_idx))
-                                            {
-                                                Ok(()) => self.status_message = None,
-                                                Err(err) => {
-                                                    self.status_message = Some(err.to_string())
-                                                }
-                                            }
-                                        }
-                                    } else {
-                                        ui.add_enabled(false, Button::new("").fill(color).small());
-                                    }
-                                    ui.label(format!(" - {} {}", card_idx + 1, text));
-                                });
+                            for (card_idx, card) in
+                                self.board.players[player_idx].iter_hand().enumerate()
+                            {
+                                // Draw the card. If it was clicked, set `played_card_idx` to the index of the card in the player's hand, so it can be sent to the board to be played.
+                                draw_card(ui, card, (card_idx + 1).to_string(), is_active_player)
+                                    .then(|| played_card_idx = Some(card_idx));
                             }
                         })
                     });
+
+                    if let Some(card_idx) = played_card_idx {
+                        match self.board.make_move(BoardMove::PlayCard(card_idx)) {
+                            Ok(()) => self.status_message = None,
+                            Err(err) => self.status_message = Some(err.to_string()),
+                        }
+                    }
                 }
                 ui.end_row();
 
                 for player in self.board.players.iter() {
+                    if player.top_country().is_none() {
+                        continue;
+                    }
+
                     ui.group(|ui| {
                         ui.vertical(|ui| {
                             for (card_idx, card) in player.iter_pile().enumerate() {
-                                draw_card(ui, card, (card_idx + 1).to_string());
-                                // let (text, color) = card.render_info();
-                                // ui.horizontal(|ui| {
-                                //     ui.add(Button::new("").fill(color).small());
-                                //     ui.label(format!(" - {} {}", card_idx + 1, text));
-                                // });
+                                draw_card(ui, card, (card_idx + 1).to_string(), true);
                                 for bonus in card.bonus.iter() {
-                                    draw_card(ui, bonus, "⮩".to_string());
+                                    draw_card(ui, bonus, "⮩".to_string(), true);
                                 }
                             }
                         });
                     });
                 }
             });
-
-            // egui::Grid::new("some_unique_id").show(ui, |ui| {
-            //     ui.label("First row, first column");
-            //     ui.group(|ui| {
-            //         for (i, player) in self.board.players.iter().enumerate() {
-            //             ui.label(format!("Player {}", i));
-            //             // egui::Window::new(format!("Player {}", i + 1))
-            //             //     .collapsible(false)
-            //             //     .show(ctx, |ui| {
-            //             //         ui.label("Hand:");
-
-            //             //         for (i, card) in player.iter_hand().enumerate() {
-            //             //             let (text, color) = card.render_info();
-            //             //             ui.horizontal(|ui| {
-            //             //                 let button = Button::new("").fill(color).small();
-            //             //                 if ui.add(button).clicked() {
-            //             //                     println!("clicked on {}", i)
-            //             //                 }
-            //             //                 ui.label(format!("   - {} {}", i + 1, text));
-            //             //             });
-            //             //         }
-
-            //             //         // // All player's played piles
-            //             //         // for card in player.iter_pile() {
-            //             //         //     let bonus_text = player
-            //             //         //         .top_country()
-            //             //         //         .map_or_else(|| "".to_string(), |country| country.raw_display())
-            //             //         //         .to_uppercase();
-
-            //             //         //     println!("| {} - {}", card, bonus_text);
-            //             //         //     for bonus in card.bonus.iter() {
-            //             //         //         println!("| ↳ {}", bonus)
-            //             //         //     }
-            //             //         // }
-            //             //     });
-            //             // // ui.memory_mut(|mem| mem.reset_areas());
-            //         }
-            //     });
-
-            //     ui.end_row();
-
-            //     ui.horizontal(|ui| {
-            //         ui.label("Same");
-            //         ui.label("cell");
-            //     });
-            //     ui.label("Third row, second column");
-            //     ui.end_row();
-            // });
         });
     }
 }

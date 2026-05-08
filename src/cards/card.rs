@@ -140,16 +140,6 @@ impl Card {
             Card::Special(Special::CerditCard),
         ]
     }
-
-    pub(crate) fn render_info(&self) -> (String, egui::Color32) {
-        match self {
-            Card::Country(country) => country.render_info(),
-            Card::Bonus(bonus) => bonus.render_info(),
-            Card::Advice(advice) => advice.render_info(),
-            Card::Special(special) => special.render_info(),
-            Card::Grey(ty) => ty.render_info(),
-        }
-    }
 }
 
 impl std::fmt::Display for Card {
@@ -160,6 +150,18 @@ impl std::fmt::Display for Card {
             Card::Advice(advice) => advice.fmt(f),
             Card::Special(special) => special.fmt(f),
             Card::Grey(ty) => ty.fmt(f),
+        }
+    }
+}
+
+impl RenderableCard for Card {
+    fn render_info(&self) -> (String, egui::Color32) {
+        match self {
+            Card::Country(country) => country.render_info(),
+            Card::Bonus(bonus) => bonus.render_info(),
+            Card::Advice(advice) => advice.render_info(),
+            Card::Special(special) => special.render_info(),
+            Card::Grey(ty) => ty.render_info(),
         }
     }
 }
