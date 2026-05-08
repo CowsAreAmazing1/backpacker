@@ -1,10 +1,8 @@
-use itertools::{
-    EitherOrBoth::{self, *},
-    Itertools, ZipLongest,
-};
+use egui::{Color32, RichText};
+use itertools::{EitherOrBoth, Itertools};
 
 use crate::{
-    board::{Board, BoardMove},
+    board::{Board, PlayerAction, TurnStage},
     cards::card::RenderableCard,
 };
 
@@ -51,11 +49,15 @@ impl eframe::App for GameEgui {
             ctx.send_viewport_cmd(egui::ViewportCommand::Close);
         }
 
+        // self.board.make_random_move();
+
         // self.board.turn_heading();
         // self.board.manual_turn();
 
         egui::SidePanel::left("game info").show(ctx, |ui| {
-            ui.heading(format!("Player {}'s turn", self.board.current_turn() + 1));
+            ui.heading(format!("Player {}'s turn", self.board.turn + 1));
+            ui.label(self.board.turn_stage.to_string());
+            ui.separator();
             if let Some(message) = &self.status_message {
                 ui.label(message);
             }
@@ -86,17 +88,57 @@ impl eframe::App for GameEgui {
         });
 
         egui::CentralPanel::default().show(ctx, |ui| {
-            // Player info section
-            egui::Grid::new("some id").show(ui, |ui| {
+            // Player/Game info section
+            egui::Grid::new("game info").show(ui, |ui| {
                 // Player `i` headings
-                for i in 0..self.board.players.len() {
-                    ui.centered_and_justified(|ui| ui.heading(format!("Player {}", i + 1)));
+                for (i, player) in self.board.players.iter().enumerate() {
+                    ui.group(|ui| {
+                        // ui.centered_and_justified(|ui| {
+                        ui.heading(format!("Player {}", i + 1));
+                        ui.label(player.score.to_string());
+                        // });
+                    });
+                }
+                ui.end_row();
+
+                // Home choice row
+                if self.board.turn_stage == TurnStage::ChooseGoHome {
+                    for player_idx in 0..self.board.players.len() {
+                        ui.centered_and_justified(|ui| {
+                            if player_idx == self.board.turn {
+                                ui.horizontal(|ui| {
+                                    ui.label("Go Home?: ");
+                                    let result = if ui
+                                        .button(RichText::new("✔").color(Color32::GREEN))
+                                        .clicked()
+                                    {
+                                        self.board.apply_action(PlayerAction::GoHome(true))
+                                    } else if ui
+                                        .button(RichText::new("✖").color(Color32::RED))
+                                        .clicked()
+                                    {
+                                        self.board.apply_action(PlayerAction::GoHome(false))
+                                    } else {
+                                        Ok(())
+                                    };
+
+                                    if let Err(err) = result {
+                                        self.status_message = Some(err.to_string())
+                                    }
+                                });
+                            } else if player_idx < self.board.turn {
+                                ui.label("➡");
+                            } else {
+                                ui.label("⬅");
+                            }
+                        });
+                    }
                 }
                 ui.end_row();
 
                 // Hands, shown in vertical groups, listing each card and a button
                 for player_idx in 0..self.board.players.len() {
-                    let is_active_player = player_idx == self.board.current_turn();
+                    let is_active_player = player_idx == self.board.turn;
                     let mut played_card_idx = None;
 
                     ui.group(|ui| {
@@ -112,7 +154,7 @@ impl eframe::App for GameEgui {
                     });
 
                     if let Some(card_idx) = played_card_idx {
-                        match self.board.make_move(BoardMove::PlayCard(card_idx)) {
+                        match self.board.apply_action(PlayerAction::Play(card_idx)) {
                             Ok(()) => self.status_message = None,
                             Err(err) => self.status_message = Some(err.to_string()),
                         }

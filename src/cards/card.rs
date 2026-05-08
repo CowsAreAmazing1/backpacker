@@ -24,7 +24,7 @@ impl Card {
         matches!(self, Card::Country(..))
     }
 
-    fn country(&self) -> Option<&Country> {
+    fn _country(&self) -> Option<&Country> {
         if let Card::Country(country) = self {
             Some(country)
         } else {
@@ -36,12 +36,16 @@ impl Card {
         matches!(self, Card::Bonus(..))
     }
 
-    fn bonus(&self) -> Option<&Bonus> {
+    fn _bonus(&self) -> Option<&Bonus> {
         if let Card::Bonus(bonus) = self {
             Some(bonus)
         } else {
             None
         }
+    }
+
+    pub(crate) fn is_grey(&self) -> bool {
+        matches!(self, Card::Grey(..))
     }
 
     pub(crate) fn raw_display(&self) -> String {

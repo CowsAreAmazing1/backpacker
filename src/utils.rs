@@ -11,6 +11,12 @@ pub(crate) enum BError {
     InvalidBonus,
     // Attempted to play bonus without top country
     NoTopCountry,
+    // Attempted to discard grey card without suffering
+    FreeGreyDiscard,
+    // Attempted to play a card before choosing whether to go home
+    PlayedBeforeHomeChoice,
+    // Attempted to choose to go home after playing a card
+    HomeChoiceMissed,
 }
 
 impl Error for BError {}
@@ -20,9 +26,16 @@ impl fmt::Display for BError {
         match self {
             Self::Custom(string) => write!(f, "{}", string),
             Self::SameContinent => write!(f, "too many countries of the same continent"),
-            Self::GreyHeld => write!(f, "you can't go home with grey cards"),
+            Self::GreyHeld => write!(f, "can't go home with grey cards"),
             Self::InvalidBonus => write!(f, "can't play that bonus on your top country"),
-            Self::NoTopCountry => write!(f, "you need a played country to play a bonus"),
+            Self::NoTopCountry => write!(f, "need a played country to play a bonus"),
+            Self::FreeGreyDiscard => write!(f, "can't discard grey cards for free"),
+            Self::PlayedBeforeHomeChoice => {
+                write!(f, "choose whether to go home before playing cards")
+            }
+            Self::HomeChoiceMissed => {
+                write!(f, "can't go home after starting your turn")
+            }
         }
     }
 }

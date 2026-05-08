@@ -1,19 +1,39 @@
-use std::{thread::sleep, time::Duration};
+// use std::{thread::sleep, time::Duration};
 
-use colored::{Colorize, CustomColor};
 use rand::seq::SliceRandom;
+// use rand::seq::IteratorRandom;
 
-use crate::{HAND_SIZE, PAUSE_TIME, cards::card::Card, player::Player, utils::BError};
+use crate::{HAND_SIZE, cards::card::Card, player::Player, utils::BError};
 
-pub(crate) enum BoardMove {
-    PlayCard(usize),
+// use strum::IntoEnumIterator;
+use strum_macros::{Display, EnumIter};
+
+#[derive(Display, PartialEq)]
+pub(crate) enum TurnStage {
+    ChooseGoHome,
+    PlayOrDiscard,
+}
+
+#[derive(EnumIter, Debug)]
+pub(crate) enum PlayerAction {
+    GoHome(bool),
+    Play(usize),
+    Discard(usize),
+}
+
+// Sorted by importance / in the order they should be considered.
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
+pub(crate) enum TurnEffect {
+    PassCardLeft,
+    EndTurn,
 }
 
 pub(crate) struct Board {
     pub(crate) future: Vec<Card>,
     pub(crate) past: Vec<Card>,
     pub(crate) players: Vec<Player>,
-    turn: usize,
+    pub(crate) turn: usize,
+    pub(crate) turn_stage: TurnStage,
 }
 
 impl Board {
@@ -57,18 +77,74 @@ impl Board {
             past,
             players,
             turn: 0,
+            turn_stage: TurnStage::ChooseGoHome,
         }
     }
 
-    pub(crate) fn current_turn(&self) -> usize {
-        self.turn
+    fn start_turn(&mut self) {
+        if self.players[self.turn].start_turn() {
+            self.next_turn();
+            return;
+        }
+        self.turn_stage = TurnStage::ChooseGoHome;
     }
 
-    fn next_turn(&mut self) {
-        if self.turn == self.players.len() - 1 {
-            self.turn = 0;
-        } else {
-            self.turn += 1;
+    pub(crate) fn apply_action(&mut self, action: PlayerAction) -> Result<(), BError> {
+        println!("{:?}", action);
+        match self.turn_stage {
+            TurnStage::ChooseGoHome => {
+                if !matches!(action, PlayerAction::GoHome(..)) {
+                    return Err(BError::PlayedBeforeHomeChoice);
+                }
+            }
+            TurnStage::PlayOrDiscard => {
+                if !(matches!(action, PlayerAction::Play(..))
+                    || matches!(action, PlayerAction::Discard(..)))
+                {
+                    return Err(BError::HomeChoiceMissed);
+                }
+            }
+        }
+
+        let effects = self.resolve_action(action)?;
+        self.apply_effects(effects);
+        Ok(())
+    }
+
+    fn resolve_action(&mut self, action: PlayerAction) -> Result<Vec<TurnEffect>, BError> {
+        let mut effects = vec![];
+        match action {
+            PlayerAction::GoHome(go_home) => {
+                if go_home {
+                    // Get cards to be added to the past pile.
+                    let mut cards = self.players[self.turn].go_home()?;
+                    // Discard them
+                    self.past.append(&mut cards);
+                    // Signal the end of the turn.
+                    effects.push(TurnEffect::EndTurn);
+                } else {
+                    // Player chose not to go home, so move onto playing / discarding.
+                    self.turn_stage = TurnStage::PlayOrDiscard;
+                }
+            }
+            PlayerAction::Play(card_index) => {
+                let new_effects = self.play_card(card_index)?;
+                effects.extend(new_effects);
+            }
+            PlayerAction::Discard(card_index) => self.player_discard(card_index)?,
+        }
+
+        effects.sort();
+        Ok(effects)
+    }
+
+    fn apply_effects(&mut self, effects: Vec<TurnEffect>) {
+        for effect in effects {
+            println!("Applying effect: {:?}", effect);
+            match effect {
+                TurnEffect::PassCardLeft => self.pass_card_left(),
+                TurnEffect::EndTurn => self.end_turn(),
+            }
         }
     }
 
@@ -77,28 +153,34 @@ impl Board {
         self.next_turn();
     }
 
+    fn next_turn(&mut self) {
+        if self.turn == self.players.len() - 1 {
+            self.turn = 0;
+        } else {
+            self.turn += 1;
+        }
+
+        self.start_turn();
+    }
+
     fn discard(&mut self, card: Card) {
         self.past.push(card);
     }
 
-    fn player_discard(&mut self, card_index: usize) {
+    fn player_discard(&mut self, card_index: usize) -> Result<(), BError> {
         let card = self.players[self.turn].swap_remove(card_index);
-        self.discard(card);
-    }
-
-    pub(crate) fn make_move(&mut self, action: BoardMove) -> Result<(), BError> {
-        let result = match action {
-            BoardMove::PlayCard(card_index) => self.play_card(card_index),
-        };
-
-        if result.is_ok() {
-            self.end_turn();
+        if card.is_grey() {
+            return Err(BError::FreeGreyDiscard);
         }
-
-        result
+        self.discard(card);
+        Ok(())
     }
 
-    fn play_card(&mut self, card_index: usize) -> Result<(), BError> {
+    fn pass_card_left(&mut self) {
+        todo!("Not sure how to do this yet. This will be a problemo");
+    }
+
+    fn play_card(&mut self, card_index: usize) -> Result<Vec<TurnEffect>, BError> {
         if card_index >= self.players[self.turn].hand_len() {
             return Err(BError::Custom("Invalid card index".to_string()));
         }
@@ -113,143 +195,27 @@ impl Board {
         }
     }
 
-    pub(crate) fn manual_game(&mut self) {
-        while !self.future.is_empty() {
-            self.turn_heading();
-            self.manual_turn();
-        }
-    }
+    // pub(crate) fn make_random_move(&mut self) {
+    //     if let Some(bm) = BoardMove::iter().choose(&mut rand::rng()) {
+    //         match bm {
+    //             BoardMove::PlayCard(_) => {
+    //                 let hand_len = self.players[self.turn].hand_len();
+    //                 if hand_len == 0 {
+    //                     self.skip_turn();
+    //                     return;
+    //                 }
 
-    pub(crate) fn manual_turn(&mut self) {
-        if self.players[self.turn].no_turn() {
-            return;
-        }
+    //                 let index = rand::Rng::random_range(
+    //                     &mut rand::rng(),
+    //                     0..self.players[self.turn].hand_len(),
+    //                 );
+    //                 if self.make_move(BoardMove::PlayCard(index)).is_ok() {
+    //                     return;
+    //                 }
+    //             }
+    //         }
+    //     }
 
-        if 1 == crate::utils::get_requested_input("Go home?: ", |_| true) {
-            match self.players[self.turn].go_home() {
-                Ok(mut cards) => {
-                    self.past.append(&mut cards);
-                }
-                Err(e) => {
-                    println!("{}", e);
-                }
-            }
-            self.end_turn();
-            sleep(Duration::from_millis(PAUSE_TIME));
-        } else {
-            let mut finished_turn = false;
-            while !finished_turn {
-                sleep(Duration::from_millis(PAUSE_TIME));
-                let res = self.manual_try_turn();
-                match res {
-                    Ok(_) => finished_turn = true,
-                    Err(e) => println!("{}", e),
-                }
-            }
-        }
-    }
-
-    fn manual_try_turn(&mut self) -> Result<(), BError> {
-        let mut selected = crate::utils::get_requested_input(
-            "Pick a card to play, or 0 to discard, 10 to home",
-            |&inp| inp <= self.players[self.turn].hand_len() || inp == 10,
-        );
-
-        if selected == 0 {
-            let to_discard: usize =
-                crate::utils::get_requested_input("Pick a card to discard", |&inp| {
-                    inp < self.players[self.turn].hand_len() && inp > 0
-                });
-            let to_discard = to_discard - 1;
-            self.player_discard(to_discard);
-            return Ok(());
-        }
-
-        // Allow for 1-based indexing for the user, and for 0 to represent a discard selection
-        selected -= 1;
-        println!("Selected {}", self.players[self.turn].get(selected));
-
-        let out = match self.players[self.turn].get(selected) {
-            Card::Bonus(_) | Card::Country(_) | Card::Grey(_) => {
-                self.make_move(BoardMove::PlayCard(selected))
-            }
-            _ => Err(BError::Custom(
-                "That card cannot be played from the hand right now".to_string(),
-            )),
-        };
-        sleep(Duration::from_millis(PAUSE_TIME));
-
-        out
-    }
-
-    pub fn turn_heading(&self) {
-        println!();
-        println!("--------------------------");
-        println!("Its player {}'s turn", self.turn + 1);
-
-        // Current player's hand
-        println!("Player {}'s hand:", self.turn + 1);
-        self.players[self.turn]
-            .iter_hand()
-            .enumerate()
-            .for_each(|(i, card)| println!("| {} {}", i + 1, card));
-
-        println!();
-
-        // All player's played piles
-        for (i, player) in self.players.iter().enumerate() {
-            for (j, card) in player.iter_pile().enumerate() {
-                let bonus_text = if let Some(country) = player.top_country() {
-                    country
-                        .allowed_bonus
-                        .to_uppercase()
-                        .custom_color(CustomColor::new(106, 229, 218))
-                } else {
-                    "".custom_color(CustomColor::new(106, 229, 218))
-                };
-
-                if j == 0 {
-                    println!("Player {}", i)
-                };
-                println!("| {} - {}", card, bonus_text);
-                for bonus in card.bonus.iter() {
-                    println!("| ↳ {}", bonus)
-                }
-            }
-        }
-
-        println!();
-
-        // maybe use this somewhere
-        // use tabular::{Table, Row};
-
-        // let mut row_spec = String::new();
-        // for _ in 0..self.players.len() {
-        //     row_spec.push_str("| {:<}   ");
-        // }
-
-        // let mut table = Table::new(&row_spec);
-
-        // let mut row = Row::new();
-        // for i in 0..self.players.len() {
-        //     row.add_cell(&format!("Player {}", i));
-        // }
-        // table.add_row(row);
-
-        // for i in 0..self.players.iter().map(|p| p.pile.len()).max().unwrap_or(0) {
-        //     let mut row = Row::new();
-        //     for player in &self.players {
-        //         let row_text = if let Some(country) = player.pile.get(i) {
-        //             format!("{}", country)
-        //         } else {
-        //             "".to_string()
-        //         };
-        //         row.add_cell(row_text);
-        //     }
-        //     println!("{}", row.len());
-        //     table.add_row(row);
-        // }
-
-        // println!("{}", table);
-    }
+    //     self.skip_turn();
+    // }
 }

@@ -1,4 +1,5 @@
 use crate::{
+    board::TurnEffect,
     cards::{bonus::Bonus, card::Card, country::Country, grey::GreyType, special::Special},
     status::{StatusHandler, StatusType},
     utils::BError,
@@ -8,9 +9,8 @@ use crate::{
 pub(crate) struct Player {
     hand: Vec<Card>,
     pile: Vec<Country>,
-    score: u32,
+    pub(crate) score: u32,
     status: StatusHandler,
-    temp: Option<Card>,
 }
 
 impl Player {
@@ -20,10 +20,13 @@ impl Player {
             pile: vec![],
             score: 0,
             status: StatusHandler::empty(),
-            temp: None,
         };
         player.sort_hand();
         player
+    }
+
+    pub(crate) fn start_turn(&mut self) -> bool {
+        self.no_turn()
     }
 
     pub(crate) fn top_country(&self) -> Option<&Country> {
@@ -63,10 +66,12 @@ impl Player {
         self.hand.swap_remove(index)
     }
 
+    /// Returns true if the player misses their turn, false otherwise. See `StatusHandler::no_turn`.
     pub(crate) fn no_turn(&mut self) -> bool {
         self.status.no_turn()
     }
 
+    // -TODO: doesnt include played attacking cards
     fn can_go_home(&self) -> Result<(), BError> {
         if self.hand.iter().any(|card| matches!(card, Card::Grey(_))) {
             return Err(BError::GreyHeld);
@@ -117,7 +122,7 @@ impl Player {
         Ok(())
     }
 
-    pub(crate) fn play_country(&mut self, card_index: usize) -> Result<(), BError> {
+    pub(crate) fn play_country(&mut self, card_index: usize) -> Result<Vec<TurnEffect>, BError> {
         let card = self.hand.swap_remove(card_index);
 
         if let Card::Country(country) = card {
@@ -127,7 +132,7 @@ impl Player {
             } else {
                 println!("Playing {}", &country);
                 self.pile.push(country);
-                Ok(())
+                Ok(vec![TurnEffect::EndTurn])
             }
         } else {
             self.hand.push(card);
@@ -147,7 +152,7 @@ impl Player {
         Ok(())
     }
 
-    pub(crate) fn play_bonus(&mut self, card_index: usize) -> Result<(), BError> {
+    pub(crate) fn play_bonus(&mut self, card_index: usize) -> Result<Vec<TurnEffect>, BError> {
         let card = self.hand.swap_remove(card_index);
 
         if let Card::Bonus(bonus) = card {
@@ -158,7 +163,7 @@ impl Player {
                 let top_country = self.top_country_mut().unwrap();
                 println!("Playing {} on {}", &bonus, &top_country);
                 top_country.bonus.push(bonus);
-                Ok(())
+                Ok(vec![TurnEffect::EndTurn])
             }
         } else {
             self.hand.push(card);
@@ -166,7 +171,7 @@ impl Player {
         }
     }
 
-    pub(crate) fn play_grey(&mut self, card_index: usize) -> Result<(), BError> {
+    pub(crate) fn play_grey(&mut self, card_index: usize) -> Result<Vec<TurnEffect>, BError> {
         if card_index >= self.hand.len() {
             return Err(BError::Custom("Invalid index".to_string()));
         }
@@ -177,8 +182,11 @@ impl Player {
             match grey {
                 GreyType::MissedFlight => {
                     self.add_status(StatusType::MissGo(1));
-                    self.temp = Some(card);
-                    Ok(())
+                    Ok(vec![TurnEffect::EndTurn])
+                }
+                GreyType::Sickness => {
+                    self.add_status(StatusType::MissGo(1));
+                    Ok(vec![TurnEffect::PassCardLeft, TurnEffect::EndTurn])
                 }
             }
         } else {

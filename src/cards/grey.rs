@@ -5,12 +5,14 @@ const GREY: (u8, u8, u8) = (120, 120, 120);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub(crate) enum GreyType {
     MissedFlight,
+    Sickness,
 }
 
 impl GreyType {
     pub(crate) fn raw_display(&self) -> String {
         match self {
             GreyType::MissedFlight => "Missed Flight".to_string(),
+            GreyType::Sickness => "Sickness".to_string(),
         }
     }
 
@@ -26,6 +28,7 @@ impl std::fmt::Display for GreyType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             GreyType::MissedFlight => write!(f, "{}", "Missed Flight".custom_color(GREY)),
+            GreyType::Sickness => write!(f, "{}", "Sickness".custom_color(GREY)),
         }
     }
 }

@@ -6,9 +6,9 @@ use crate::{PAUSE_TIME, cards::advice::AdviceType};
 pub(crate) enum StatusType {
     // Player will miss their next go(s)
     MissGo(u8),
-    // ??
+    // Player cant play any countries or bonuses
     NoCountries(u8),
-    // Affected by Bad Advice
+    // Affected by Bad Advice.
     BadAdvice(AdviceType),
     // Affected by Visa Problem
     VisaProblem,
@@ -32,6 +32,7 @@ impl StatusHandler {
         self.types.retain(|t| *t != status);
     }
 
+    /// Returns true if the player misses their turn, false otherwise. Internally updates the status of the player, decrementing the number of turns still to miss.
     pub(crate) fn no_turn(&mut self) -> bool {
         for ty in self.types.iter_mut() {
             if let StatusType::MissGo(gos) = ty {
