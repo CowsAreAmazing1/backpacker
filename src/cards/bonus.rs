@@ -5,7 +5,7 @@ use crate::cards::card::RenderableCard;
 const BONUS: (u8, u8, u8) = (106, 229, 218);
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy, PartialOrd, Ord)]
-pub(crate) enum Bonus {
+pub enum Bonus {
     Beach,
     Culture,
     Trekking,
@@ -14,7 +14,7 @@ pub(crate) enum Bonus {
 
 impl Bonus {
     /// Parses a char into a `Bonus` enum variant.
-    pub(crate) fn parse(input: &char) -> Self {
+    pub(crate) fn _parse(input: &char) -> Self {
         match input {
             'b' => Self::Beach,
             'c' => Self::Culture,

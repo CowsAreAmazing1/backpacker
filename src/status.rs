@@ -3,7 +3,7 @@ use std::{thread::sleep, time::Duration};
 use crate::{PAUSE_TIME, cards::advice::AdviceType};
 
 #[derive(Debug, PartialEq)]
-pub(crate) enum StatusType {
+pub enum StatusType {
     // Player will miss their next go(s)
     MissGo(u8),
     // Player cant play any countries or bonuses
@@ -28,7 +28,7 @@ impl StatusHandler {
         self.types.push(status);
     }
 
-    fn remove_status(&mut self, status: StatusType) {
+    fn _remove_status(&mut self, status: StatusType) {
         self.types.retain(|t| *t != status);
     }
 

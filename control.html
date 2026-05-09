@@ -1,0 +1,77 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Backpacker Control</title>
+</head>
+<body>
+  <h1>Backpacker — Control Panel</h1>
+  <div id="state">Connecting...</div>
+
+  <div>
+    <button id="go-home-yes">Go Home (Yes)</button>
+    <button id="go-home-no">Go Home (No)</button>
+  </div>
+  <div>
+    <label>Play card index: <input id="play-index" type="number" min="0" value="0"/></label>
+    <button id="play">Play</button>
+  </div>
+  <div>
+    <label>Discard index: <input id="discard-index" type="number" min="0" value="0"/></label>
+    <button id="discard">Discard</button>
+  </div>
+
+  <script>
+    const stateEl = document.getElementById('state');
+
+    // Optional override, e.g. control.html?ws=ws://192.168.1.50:3030/ws
+    const params = new URLSearchParams(window.location.search);
+    const overrideWs = params.get('ws');
+
+    const wsUrl = (() => {
+      if (overrideWs) return overrideWs;
+
+      const scheme = window.location.protocol === 'https:' ? 'wss' : 'ws';
+      const host = window.location.hostname || '127.0.0.1';
+      return `${scheme}://${host}:3030/ws`;
+    })();
+
+    stateEl.textContent = `Connecting to ${wsUrl}...`;
+    const ws = new WebSocket(wsUrl);
+
+    ws.addEventListener('open', () => {
+      stateEl.textContent = 'Connected, waiting for state...';
+    });
+
+    ws.addEventListener('message', (ev) => {
+      try {
+        const data = JSON.parse(ev.data);
+        if (data.type === 'state') {
+          const s = data.state;
+          let html = `<pre>${JSON.stringify(s, null, 2)}</pre>`;
+          stateEl.innerHTML = html;
+        } else if (data.type === 'error') {
+          stateEl.innerHTML = `<div style="color:red">Error: ${data.message}</div>`;
+        }
+      } catch (e) {
+        console.error('Invalid message', e);
+      }
+    });
+
+    document.getElementById('go-home-yes').addEventListener('click', () => {
+      ws.send(JSON.stringify({type:'gohome', go:true}));
+    });
+    document.getElementById('go-home-no').addEventListener('click', () => {
+      ws.send(JSON.stringify({type:'gohome', go:false}));
+    });
+    document.getElementById('play').addEventListener('click', () => {
+      const idx = parseInt(document.getElementById('play-index').value || '0', 10);
+      ws.send(JSON.stringify({type:'play', index: idx}));
+    });
+    document.getElementById('discard').addEventListener('click', () => {
+      const idx = parseInt(document.getElementById('discard-index').value || '0', 10);
+      ws.send(JSON.stringify({type:'discard', index: idx}));
+    });
+  </script>
+</body>
+</html>

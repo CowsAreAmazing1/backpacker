@@ -1,7 +1,7 @@
 use std::{error::Error, fmt};
 
 #[derive(Debug)]
-pub(crate) enum BError {
+pub enum BError {
     Custom(String),
     // Attempted to play countries of the same continent, (2 without credit card or 3 with credit card)
     SameContinent,
@@ -40,14 +40,15 @@ impl fmt::Display for BError {
     }
 }
 
-fn read_line() -> Result<String, std::io::Error> {
+// Functions for CLI interaction. This is not up to date rn
+fn _read_line() -> Result<String, std::io::Error> {
     let mut buffer = String::new();
     let stdin = std::io::stdin(); // We get `Stdin` here.
     stdin.read_line(&mut buffer)?;
     Ok(buffer)
 }
 
-pub(crate) fn get_requested_input<T, F>(message: &str, condition: F) -> T
+pub(crate) fn _get_requested_input<T, F>(message: &str, condition: F) -> T
 where
     T: PartialOrd + std::str::FromStr<Err: std::fmt::Debug>,
     F: Fn(&T) -> bool,

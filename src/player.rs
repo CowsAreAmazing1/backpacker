@@ -6,10 +6,10 @@ use crate::{
 };
 
 #[derive(Debug)]
-pub(crate) struct Player {
+pub struct Player {
     hand: Vec<Card>,
     pile: Vec<Country>,
-    pub(crate) score: u32,
+    pub score: u32,
     status: StatusHandler,
 }
 
@@ -29,6 +29,12 @@ impl Player {
         self.no_turn()
     }
 
+    pub(crate) fn pick_up(&mut self, card: Option<Card>) {
+        if let Some(card) = card {
+            self.hand.push(card);
+        }
+    }
+
     pub(crate) fn top_country(&self) -> Option<&Country> {
         self.pile.last()
     }
@@ -42,7 +48,7 @@ impl Player {
     }
 
     /// Returns the number of cards in the player's hand. Really should only be 5? check this
-    pub(crate) fn hand_len(&self) -> usize {
+    pub fn hand_len(&self) -> usize {
         self.hand.len()
     }
 
@@ -58,7 +64,7 @@ impl Player {
         self.hand.iter()
     }
 
-    pub(crate) fn iter_pile(&self) -> impl Iterator<Item = &Country> {
+    pub fn iter_pile(&self) -> impl Iterator<Item = &Country> {
         self.pile.iter()
     }
 
@@ -195,7 +201,7 @@ impl Player {
         }
     }
 
-    fn show_pile(&self) {
+    fn _show_pile(&self) {
         print!("[");
         for (i, c) in self.pile.iter().enumerate() {
             if i != 0 {
@@ -206,14 +212,14 @@ impl Player {
         println!("]");
     }
 
-    fn try_playing_all_counties(&mut self) {
+    fn _try_playing_all_counties(&mut self) {
         for i in 0..self.hand.len() {
             let _ = self.play_country(i);
-            self.try_playing_all_bonuses();
+            self._try_playing_all_bonuses();
         }
     }
 
-    fn try_playing_all_bonuses(&mut self) {
+    fn _try_playing_all_bonuses(&mut self) {
         for i in 0..self.hand.len() {
             let _ = self.play_bonus(i);
         }

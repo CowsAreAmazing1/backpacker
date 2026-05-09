@@ -3,7 +3,7 @@ use colored::Colorize;
 const SPECIAL: (u8, u8, u8) = (231, 157, 72);
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
-pub(crate) enum Special {
+pub enum Special {
     CerditCard,
 }
 

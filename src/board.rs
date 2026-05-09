@@ -3,19 +3,28 @@
 use rand::seq::SliceRandom;
 // use rand::seq::IteratorRandom;
 
-use crate::{HAND_SIZE, cards::card::Card, player::Player, utils::BError};
+use crate::{
+    HAND_SIZE, NUM_PLAYERS,
+    cards::{
+        bonus::Bonus,
+        card::{Card, RenderableCard},
+    },
+    player::Player,
+    state::{CardView, CountryView, GameSnapshot, PlayerView},
+    utils::BError,
+};
 
 // use strum::IntoEnumIterator;
 use strum_macros::{Display, EnumIter};
 
-#[derive(Display, PartialEq)]
-pub(crate) enum TurnStage {
+#[derive(Debug, Display, PartialEq)]
+pub enum TurnStage {
     ChooseGoHome,
     PlayOrDiscard,
 }
 
 #[derive(EnumIter, Debug)]
-pub(crate) enum PlayerAction {
+pub enum PlayerAction {
     GoHome(bool),
     Play(usize),
     Discard(usize),
@@ -23,32 +32,32 @@ pub(crate) enum PlayerAction {
 
 // Sorted by importance / in the order they should be considered.
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
-pub(crate) enum TurnEffect {
+pub enum TurnEffect {
     PassCardLeft,
     EndTurn,
 }
 
-pub(crate) struct Board {
-    pub(crate) future: Vec<Card>,
-    pub(crate) past: Vec<Card>,
-    pub(crate) players: Vec<Player>,
-    pub(crate) turn: usize,
-    pub(crate) turn_stage: TurnStage,
+pub struct Board {
+    pub future: Vec<Card>,
+    pub past: Vec<Card>,
+    pub players: Vec<Player>,
+    pub turn: usize,
+    pub turn_stage: TurnStage,
 }
 
 impl Board {
-    pub fn new_game(num_players: usize) -> Self {
+    pub fn new_game() -> Self {
         let mut deck = Card::deck();
 
         let mut rng = rand::rng();
         deck.shuffle(&mut rng);
 
-        let num_held_cards = HAND_SIZE * num_players;
+        let num_held_cards = HAND_SIZE * NUM_PLAYERS;
 
         if num_held_cards >= deck.len() {
             panic!(
                 "Too many players / Not enough cards! Players: {}, Cards: {}",
-                num_players,
+                NUM_PLAYERS,
                 deck.len()
             )
         }
@@ -56,7 +65,7 @@ impl Board {
         let mut deck_iter = deck.into_iter();
         let mut to_be_held = deck_iter.by_ref().take(num_held_cards);
 
-        let players: Vec<Player> = (0..num_players)
+        let players: Vec<Player> = (0..NUM_PLAYERS)
             .map(|_| {
                 let hand: Vec<Card> = to_be_held.by_ref().take(HAND_SIZE).collect();
                 Player::from_hand(hand)
@@ -89,7 +98,7 @@ impl Board {
         self.turn_stage = TurnStage::ChooseGoHome;
     }
 
-    pub(crate) fn apply_action(&mut self, action: PlayerAction) -> Result<(), BError> {
+    pub fn apply_action(&mut self, action: PlayerAction) -> Result<(), BError> {
         println!("{:?}", action);
         match self.turn_stage {
             TurnStage::ChooseGoHome => {
@@ -124,6 +133,7 @@ impl Board {
                     effects.push(TurnEffect::EndTurn);
                 } else {
                     // Player chose not to go home, so move onto playing / discarding.
+                    self.players[self.turn].pick_up(self.future.pop());
                     self.turn_stage = TurnStage::PlayOrDiscard;
                 }
             }
@@ -131,7 +141,10 @@ impl Board {
                 let new_effects = self.play_card(card_index)?;
                 effects.extend(new_effects);
             }
-            PlayerAction::Discard(card_index) => self.player_discard(card_index)?,
+            PlayerAction::Discard(card_index) => {
+                let new_effects = self.player_discard(card_index)?;
+                effects.extend(new_effects);
+            }
         }
 
         effects.sort();
@@ -167,13 +180,15 @@ impl Board {
         self.past.push(card);
     }
 
-    fn player_discard(&mut self, card_index: usize) -> Result<(), BError> {
+    fn player_discard(&mut self, card_index: usize) -> Result<Vec<TurnEffect>, BError> {
         let card = self.players[self.turn].swap_remove(card_index);
         if card.is_grey() {
-            return Err(BError::FreeGreyDiscard);
+            panic!(
+                "Grey cards should not be discardable! This should be checked before calling `player_discard`"
+            );
         }
         self.discard(card);
-        Ok(())
+        Ok(vec![TurnEffect::EndTurn])
     }
 
     fn pass_card_left(&mut self) {
@@ -192,6 +207,24 @@ impl Board {
             _ => Err(BError::Custom(
                 "That card cannot be played from the hand right now".to_string(),
             )),
+        }
+    }
+
+    pub fn snapshot(&self) -> GameSnapshot {
+        GameSnapshot {
+            turn: self.turn,
+            turn_stage: self.turn_stage.to_string(),
+            future: self.future.iter().map(card_view).collect(),
+            past: self.past.iter().map(card_view).collect(),
+            players: self
+                .players
+                .iter()
+                .map(|player| PlayerView {
+                    hand: player.iter_hand().map(card_view).collect(),
+                    pile: player.iter_pile().map(country_view).collect(),
+                    score: player.score,
+                })
+                .collect(),
         }
     }
 
@@ -218,4 +251,26 @@ impl Board {
 
     //     self.skip_turn();
     // }
+}
+
+fn card_view(card: &Card) -> CardView {
+    let (label, color) = card.render_info();
+    CardView {
+        label,
+        color: [color.r(), color.g(), color.b(), color.a()],
+        is_grey: card.is_grey(),
+    }
+}
+
+fn country_view(country: &crate::cards::country::Country) -> CountryView {
+    let (label, color) = country.render_info();
+    CountryView {
+        label,
+        color: [color.r(), color.g(), color.b(), color.a()],
+        bonuses: country
+            .bonus
+            .iter()
+            .map(|bonus: &Bonus| card_view(&Card::Bonus(*bonus)))
+            .collect(),
+    }
 }

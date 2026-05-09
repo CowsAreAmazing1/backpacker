@@ -5,7 +5,7 @@ const BAD_ADVICE: (u8, u8, u8) = (248, 30, 88);
 
 /// Advice flavour enum, used for good and bad advice cards.
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
-pub(crate) enum AdviceType {
+pub enum AdviceType {
     Money,
     Bureaucracy,
     Timing,
@@ -14,7 +14,7 @@ pub(crate) enum AdviceType {
 
 /// Advice card struct, describing the flavour and goodness.
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
-pub(crate) struct Advice {
+pub struct Advice {
     good: bool,
     variant: AdviceType,
 }

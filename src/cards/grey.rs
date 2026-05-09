@@ -3,7 +3,7 @@ use colored::Colorize;
 const GREY: (u8, u8, u8) = (120, 120, 120);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-pub(crate) enum GreyType {
+pub enum GreyType {
     MissedFlight,
     Sickness,
 }

@@ -11,7 +11,7 @@ pub(crate) trait RenderableCard {
 }
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
-pub(crate) enum Card {
+pub enum Card {
     Country(Country),
     Bonus(Bonus),
     Advice(Advice),
@@ -20,7 +20,7 @@ pub(crate) enum Card {
 }
 
 impl Card {
-    fn is_country(&self) -> bool {
+    fn _is_country(&self) -> bool {
         matches!(self, Card::Country(..))
     }
 
@@ -32,7 +32,7 @@ impl Card {
         }
     }
 
-    fn is_bonus(&self) -> bool {
+    fn _is_bonus(&self) -> bool {
         matches!(self, Card::Bonus(..))
     }
 
@@ -48,7 +48,7 @@ impl Card {
         matches!(self, Card::Grey(..))
     }
 
-    pub(crate) fn raw_display(&self) -> String {
+    pub(crate) fn _raw_display(&self) -> String {
         match self {
             Card::Country(country) => country.raw_display(),
             Card::Bonus(bonus) => bonus.raw_display(),
@@ -97,7 +97,7 @@ impl Card {
             Card::Country(Country::new("UK", 2, "c")),
             Card::Country(Country::new("France", 2, "ct")),
             Card::Country(Country::new("Holland", 2, "c")),
-            // Oceania
+            // // Oceania
             Card::Country(Country::new("Easter Island", 6, "c")),
             Card::Country(Country::new("Tahiti", 4, "bcw")),
             Card::Country(Country::new("New Zealand", 4, "bct")),
@@ -140,6 +140,8 @@ impl Card {
             Card::Grey(GreyType::MissedFlight),
             Card::Grey(GreyType::MissedFlight),
             Card::Grey(GreyType::MissedFlight),
+            Card::Grey(GreyType::Sickness), // not sure how many of these there are
+            Card::Grey(GreyType::Sickness),
             //Special
             Card::Special(Special::CerditCard),
         ]

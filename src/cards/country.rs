@@ -21,7 +21,7 @@ pub(crate) enum Continent {
 
 /// Country card struct,
 #[derive(Debug, Clone, Eq, PartialOrd, Ord)]
-pub(crate) struct Country {
+pub struct Country {
     pub(crate) name: String,
     pub(crate) score: u8,
     pub(crate) allowed_bonus: String,
@@ -72,7 +72,7 @@ impl Country {
 
     /// Raw string representation of the `Country` card. -TODO: Does not include any bonus information
     pub(crate) fn raw_display(&self) -> String {
-        self.name.to_string()
+        format!("{} - {}", self.name, self.allowed_bonus)
     }
 }
 
@@ -107,6 +107,6 @@ impl RenderableCard for Country {
             Continent::Europe => egui::Color32::from_rgb(EUROPE.0, EUROPE.1, EUROPE.2),
             Continent::Oceania => egui::Color32::from_rgb(OCEANIA.0, OCEANIA.1, OCEANIA.2),
         };
-        (self.name.to_string(), color)
+        (self.raw_display(), color)
     }
 }
