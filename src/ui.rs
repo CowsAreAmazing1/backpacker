@@ -351,8 +351,8 @@ fn render_remote_board(ui: &mut egui::Ui, client: &RemoteGameClient) {
                             }
                         });
                     }
+                    ui.end_row();
                 }
-                ui.end_row();
 
                 for player_idx in 0..snapshot.players.len() {
                     let is_active_player = player_idx == snapshot.turn;
