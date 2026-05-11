@@ -33,16 +33,6 @@ impl Bonus {
             Self::Wildlife => 'w',
         }
     }
-
-    /// Raw string representation of the `Bonus`.
-    pub(crate) fn raw_display(&self) -> String {
-        match self {
-            Bonus::Beach => "Beach Bonus".to_string(),
-            Bonus::Culture => "Culture Bonus".to_string(),
-            Bonus::Trekking => "Trekking Bonus".to_string(),
-            Bonus::Wildlife => "Wildlife Bonus".to_string(),
-        }
-    }
 }
 
 impl std::fmt::Display for Bonus {
@@ -59,6 +49,15 @@ impl std::fmt::Display for Bonus {
 }
 
 impl RenderableCard for Bonus {
+    fn raw_display(&self) -> String {
+        match self {
+            Bonus::Beach => "Beach Bonus".to_string(),
+            Bonus::Culture => "Culture Bonus".to_string(),
+            Bonus::Trekking => "Trekking Bonus".to_string(),
+            Bonus::Wildlife => "Wildlife Bonus".to_string(),
+        }
+    }
+
     fn render_info(&self) -> (String, egui::Color32) {
         let color = egui::Color32::from_rgb(BONUS.0, BONUS.1, BONUS.2);
         (self.raw_display(), color)

@@ -24,7 +24,9 @@ pub(crate) enum Continent {
 pub struct Country {
     pub(crate) name: String,
     pub(crate) score: u8,
+    /// `String`/`[char]` of the bonuses that can be attached to this country. See `Bonus::parse`/`Bonus::unparse`
     pub(crate) allowed_bonus: String,
+    /// Vec of the `Bonus`es currently attached to this country. This is used for scoring and display, and is drained when the card is discarded.
     pub(crate) bonus: Vec<Bonus>,
 }
 
@@ -69,11 +71,6 @@ impl Country {
     pub(crate) fn drain_bonus(&mut self) -> impl Iterator<Item = Bonus> {
         self.bonus.drain(..)
     }
-
-    /// Raw string representation of the `Country` card. -TODO: Does not include any bonus information
-    pub(crate) fn raw_display(&self) -> String {
-        format!("{} - {}", self.name, self.allowed_bonus)
-    }
 }
 
 impl PartialEq for Country {
@@ -96,6 +93,10 @@ impl std::fmt::Display for Country {
 }
 
 impl RenderableCard for Country {
+    fn raw_display(&self) -> String {
+        format!("{} {} - {}", self.score, self.name, self.allowed_bonus)
+    }
+
     fn render_info(&self) -> (String, egui::Color32) {
         let color = match self.continent() {
             Continent::Africa => egui::Color32::from_rgb(AFRICA.0, AFRICA.1, AFRICA.2),

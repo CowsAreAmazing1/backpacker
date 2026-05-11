@@ -4,13 +4,13 @@ const SPECIAL: (u8, u8, u8) = (231, 157, 72);
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Special {
-    CerditCard,
+    CreditCard,
 }
 
 impl Special {
     pub(crate) fn raw_display(&self) -> String {
         match self {
-            Self::CerditCard => "Credit Card".to_string(),
+            Self::CreditCard => "Credit Card".to_string(),
         }
     }
 
@@ -25,7 +25,7 @@ impl Special {
 impl std::fmt::Display for Special {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::CerditCard => write!(f, "{}", "Credit Card".custom_color(SPECIAL)),
+            Self::CreditCard => write!(f, "{}", "Credit Card".custom_color(SPECIAL)),
         }
     }
 }

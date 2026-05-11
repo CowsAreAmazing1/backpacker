@@ -17,12 +17,14 @@ use crate::{
 // use strum::IntoEnumIterator;
 use strum_macros::{Display, EnumIter};
 
+/// The current stage of the current player's turn
 #[derive(Debug, Display, PartialEq)]
 pub enum TurnStage {
     ChooseGoHome,
     PlayOrDiscard,
 }
 
+/// The action a player can take on their turn. This is the input to the `apply_action` function, which will perform the action, resolve it into one or more `TurnEffect`s.
 #[derive(EnumIter, Debug)]
 pub enum PlayerAction {
     GoHome(bool),
@@ -30,7 +32,8 @@ pub enum PlayerAction {
     Discard(usize),
 }
 
-// Sorted by importance / in the order they should be considered.
+/// The game-wide effects of a player's action.
+/// Sorted by importance / in the order they should be considered.
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum TurnEffect {
     PassCardLeft,
@@ -38,10 +41,15 @@ pub enum TurnEffect {
 }
 
 pub struct Board {
+    /// The future pile - The cards that are yet to be drawn.
     pub future: Vec<Card>,
+    /// The past pile - The cards that have been discarded or played.
     pub past: Vec<Card>,
+    /// The `Player`s in the game, in turn order.
     pub players: Vec<Player>,
+    /// The index of the current player's turn in the `players` vector.
     pub turn: usize,
+    /// The current stage of the current player's turn which requires input from the player.
     pub turn_stage: TurnStage,
 }
 
@@ -133,7 +141,9 @@ impl Board {
                     effects.push(TurnEffect::EndTurn);
                 } else {
                     // Player chose not to go home, so move onto playing / discarding.
-                    self.players[self.turn].pick_up(self.future.pop());
+                    // Draw a card
+                    self.players[self.turn].pick_up(self.future.pop().unwrap());
+                    // Move to the next stage of the turn.
                     self.turn_stage = TurnStage::PlayOrDiscard;
                 }
             }

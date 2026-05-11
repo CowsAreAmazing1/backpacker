@@ -7,6 +7,7 @@ use crate::cards::{
 };
 
 pub(crate) trait RenderableCard {
+    fn raw_display(&self) -> String;
     fn render_info(&self) -> (String, egui::Color32);
 }
 
@@ -46,16 +47,6 @@ impl Card {
 
     pub(crate) fn is_grey(&self) -> bool {
         matches!(self, Card::Grey(..))
-    }
-
-    pub(crate) fn _raw_display(&self) -> String {
-        match self {
-            Card::Country(country) => country.raw_display(),
-            Card::Bonus(bonus) => bonus.raw_display(),
-            Card::Advice(advice) => advice.raw_display(),
-            Card::Special(special) => special.raw_display(),
-            Card::Grey(ty) => ty.raw_display(),
-        }
     }
 
     pub fn deck() -> Vec<Self> {
@@ -143,7 +134,7 @@ impl Card {
             Card::Grey(GreyType::Sickness), // not sure how many of these there are
             Card::Grey(GreyType::Sickness),
             //Special
-            Card::Special(Special::CerditCard),
+            Card::Special(Special::CreditCard),
         ]
     }
 }
@@ -161,6 +152,18 @@ impl std::fmt::Display for Card {
 }
 
 impl RenderableCard for Card {
+    /// Raw text display of the `Card`
+    fn raw_display(&self) -> String {
+        match self {
+            Card::Country(country) => country.raw_display(),
+            Card::Bonus(bonus) => bonus.raw_display(),
+            Card::Advice(advice) => advice.raw_display(),
+            Card::Special(special) => special.raw_display(),
+            Card::Grey(ty) => ty.raw_display(),
+        }
+    }
+
+    /// Info used to render the `Card` in the UI, including the display text and button color
     fn render_info(&self) -> (String, egui::Color32) {
         match self {
             Card::Country(country) => country.render_info(),

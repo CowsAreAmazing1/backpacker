@@ -203,7 +203,8 @@ fn render_local_board(ui: &mut egui::Ui, board: &mut Board, status_message: &mut
                             ui.horizontal(|ui| {
                                 draw_card(ui, card, (card_idx + 1).to_string(), is_active_player)
                                     .then(|| played_card_idx = Some(card_idx));
-                                if !card.is_grey() && ui.button("🕯").clicked() {
+                                if !card.is_grey() && is_active_player && ui.button("🕯").clicked()
+                                {
                                     discarded_card_idx = Some(card_idx);
                                 }
                             });
@@ -228,7 +229,7 @@ fn render_local_board(ui: &mut egui::Ui, board: &mut Board, status_message: &mut
 
             for player in board.players.iter() {
                 if player.top_country().is_none() {
-                    ui.label("theres something in this bit \n dont align u silly");
+                    ui.label("");
                     continue;
                 }
 
@@ -347,7 +348,8 @@ fn render_remote_board(ui: &mut egui::Ui, client: &RemoteGameClient) {
                                         is_active_player,
                                     )
                                     .then(|| played_card_idx = Some(card_idx));
-                                    if !card.is_grey && ui.button("🕯").clicked() {
+                                    if !card.is_grey && is_active_player && ui.button("🕯").clicked()
+                                    {
                                         discarded_card_idx = Some(card_idx);
                                     }
                                 });
@@ -365,10 +367,10 @@ fn render_remote_board(ui: &mut egui::Ui, client: &RemoteGameClient) {
                 ui.end_row();
 
                 for player in snapshot.players.iter() {
-                    // if player.pile.is_empty() {
-                    //     ui.label("theres something in this bit dont align u silly");
-                    //     continue;
-                    // }
+                    if player.pile.is_empty() {
+                        ui.label("");
+                        continue;
+                    }
 
                     ui.group(|ui| {
                         ui.vertical(|ui| {

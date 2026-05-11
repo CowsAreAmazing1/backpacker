@@ -3,7 +3,7 @@ use std::{error::Error, fmt};
 #[derive(Debug)]
 pub enum BError {
     Custom(String),
-    // Attempted to play countries of the same continent, (2 without credit card or 3 with credit card)
+    // Attempted to play too many countries of the same continent, (2 without credit card or 3 with credit card)
     SameContinent,
     // Attempted to go home with grey card(s)
     GreyHeld,

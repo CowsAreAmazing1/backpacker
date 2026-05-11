@@ -1,6 +1,4 @@
-use std::{thread::sleep, time::Duration};
-
-use crate::{PAUSE_TIME, cards::advice::AdviceType};
+use crate::cards::advice::AdviceType;
 
 #[derive(Debug, PartialEq)]
 pub enum StatusType {
@@ -34,6 +32,7 @@ impl StatusHandler {
 
     /// Returns true if the player misses their turn, false otherwise. Internally updates the status of the player, decrementing the number of turns still to miss.
     pub(crate) fn no_turn(&mut self) -> bool {
+        // Find the first MissGo status, if any, and decrement it. If it reaches 0, remove the status.
         for ty in self.types.iter_mut() {
             if let StatusType::MissGo(gos) = ty {
                 if gos > &mut 1 {
@@ -45,7 +44,6 @@ impl StatusHandler {
 
                 self.cleanup();
 
-                sleep(Duration::from_millis(PAUSE_TIME));
                 return true;
             }
         }

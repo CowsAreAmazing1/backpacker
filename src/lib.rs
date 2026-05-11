@@ -19,7 +19,6 @@ pub use ui::GameEgui;
 
 pub const NUM_PLAYERS: usize = 4;
 pub const HAND_SIZE: usize = 5;
-pub const PAUSE_TIME: u64 = 700;
 
 #[cfg(not(target_arch = "wasm32"))]
 pub fn run_native() -> eframe::Result<()> {

@@ -25,5 +25,4 @@ wasm-bindgen "!WASM_FILE!" --out-dir pkg --target web --out-name backpacker
 if errorlevel 1 exit /b 1
 
 echo.
-echo Starting server...
 cargo run --bin server
