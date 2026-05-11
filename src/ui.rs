@@ -152,8 +152,12 @@ fn render_local_board(ui: &mut egui::Ui, board: &mut Board, status_message: &mut
         egui::Grid::new("game info").show(ui, |ui| {
             for (i, player) in board.players.iter().enumerate() {
                 ui.group(|ui| {
-                    ui.heading(format!("Player {}", i + 1));
-                    ui.label(player.score.to_string());
+                    ui.centered_and_justified(|ui| {
+                        ui.horizontal(|ui| {
+                            ui.heading(format!("Player {}", i + 1));
+                            ui.label(player.score.to_string());
+                        });
+                    })
                 });
             }
             ui.end_row();
@@ -162,25 +166,33 @@ fn render_local_board(ui: &mut egui::Ui, board: &mut Board, status_message: &mut
                 for player_idx in 0..board.players.len() {
                     ui.centered_and_justified(|ui| {
                         if player_idx == board.turn {
-                            ui.horizontal(|ui| {
-                                ui.label("Go Home?: ");
-                                let result = if ui
-                                    .button(RichText::new("✔").color(Color32::GREEN))
-                                    .clicked()
-                                {
-                                    board.apply_action(PlayerAction::GoHome(true))
-                                } else if ui
-                                    .button(RichText::new("✖").color(Color32::RED))
-                                    .clicked()
-                                {
-                                    board.apply_action(PlayerAction::GoHome(false))
-                                } else {
-                                    Ok(())
-                                };
+                            let color = Color32::from_rgb(0, 55, 79);
+                            let t = (2.0 * ui.time()).sin() * 0.5 + 0.5;
+                            let faded = color.lerp_to_gamma(color.gamma_multiply(0.2), t as f32);
 
-                                if let Err(err) = result {
-                                    *status_message = Some(err.to_string())
-                                }
+                            ui.request_repaint();
+
+                            egui::Frame::group(ui.style()).fill(faded).show(ui, |ui| {
+                                ui.horizontal(|ui| {
+                                    ui.label("Go Home?: ");
+                                    let result = if ui
+                                        .button(RichText::new("✔").color(Color32::GREEN))
+                                        .clicked()
+                                    {
+                                        board.apply_action(PlayerAction::GoHome(true))
+                                    } else if ui
+                                        .button(RichText::new("✖").color(Color32::RED))
+                                        .clicked()
+                                    {
+                                        board.apply_action(PlayerAction::GoHome(false))
+                                    } else {
+                                        Ok(())
+                                    };
+
+                                    if let Err(err) = result {
+                                        *status_message = Some(err.to_string())
+                                    }
+                                });
                             });
                         } else if player_idx < board.turn {
                             ui.label("➡");
@@ -189,8 +201,8 @@ fn render_local_board(ui: &mut egui::Ui, board: &mut Board, status_message: &mut
                         }
                     });
                 }
+                ui.end_row();
             }
-            ui.end_row();
 
             for player_idx in 0..board.players.len() {
                 let is_active_player = player_idx == board.turn;
@@ -203,7 +215,10 @@ fn render_local_board(ui: &mut egui::Ui, board: &mut Board, status_message: &mut
                             ui.horizontal(|ui| {
                                 draw_card(ui, card, (card_idx + 1).to_string(), is_active_player)
                                     .then(|| played_card_idx = Some(card_idx));
-                                if !card.is_grey() && is_active_player && ui.button("🕯").clicked()
+                                if !card.is_grey()
+                                    && is_active_player
+                                    && board.turn_stage != TurnStage::ChooseGoHome
+                                    && ui.button("🕯").clicked()
                                 {
                                     discarded_card_idx = Some(card_idx);
                                 }
@@ -306,19 +321,28 @@ fn render_remote_board(ui: &mut egui::Ui, client: &RemoteGameClient) {
                     for player_idx in 0..snapshot.players.len() {
                         ui.centered_and_justified(|ui| {
                             if player_idx == snapshot.turn {
-                                ui.horizontal(|ui| {
-                                    ui.label("Go Home?: ");
-                                    if ui
-                                        .button(RichText::new("✔").color(Color32::GREEN))
-                                        .clicked()
-                                    {
-                                        client.send(ClientMsg::GoHome { go: true });
-                                    } else if ui
-                                        .button(RichText::new("✖").color(Color32::RED))
-                                        .clicked()
-                                    {
-                                        client.send(ClientMsg::GoHome { go: false });
-                                    }
+                                let color = Color32::from_rgb(0, 55, 79);
+                                let t = (2.0 * ui.time()).sin() * 0.5 + 0.5;
+                                let faded =
+                                    color.lerp_to_gamma(color.gamma_multiply(0.2), t as f32);
+
+                                ui.request_repaint();
+
+                                egui::Frame::group(ui.style()).fill(faded).show(ui, |ui| {
+                                    ui.horizontal(|ui| {
+                                        ui.label("Go Home?: ");
+                                        if ui
+                                            .button(RichText::new("✔").color(Color32::GREEN))
+                                            .clicked()
+                                        {
+                                            client.send(ClientMsg::GoHome { go: true });
+                                        } else if ui
+                                            .button(RichText::new("✖").color(Color32::RED))
+                                            .clicked()
+                                        {
+                                            client.send(ClientMsg::GoHome { go: false });
+                                        }
+                                    });
                                 });
                             } else if player_idx < snapshot.turn {
                                 ui.label("➡");
@@ -348,7 +372,10 @@ fn render_remote_board(ui: &mut egui::Ui, client: &RemoteGameClient) {
                                         is_active_player,
                                     )
                                     .then(|| played_card_idx = Some(card_idx));
-                                    if !card.is_grey && is_active_player && ui.button("🕯").clicked()
+                                    if !card.is_grey
+                                        && is_active_player
+                                        && snapshot.turn_stage != "ChooseGoHome"
+                                        && ui.button("🕯").clicked()
                                     {
                                         discarded_card_idx = Some(card_idx);
                                     }
