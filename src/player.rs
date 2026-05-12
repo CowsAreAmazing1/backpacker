@@ -214,6 +214,22 @@ impl Player {
         }
     }
 
+    pub(crate) fn play_advice(&mut self, card_index: usize) -> Result<Vec<TurnEffect>, BError> {
+        if card_index >= self.hand.len() {
+            return Err(BError::Custom("Invalid index".to_string()));
+        }
+
+        if let Card::Advice(adv_ref) = &self.hand[card_index] {
+            if adv_ref.good {
+                unimplemented!("Good advice cards are not implemented yet!");
+            } else {
+                Ok(vec![TurnEffect::StoreCard(card_index)])
+            }
+        } else {
+            Err(BError::Custom("Not an advice card".to_string()))
+        }
+    }
+
     fn _show_pile(&self) {
         print!("[");
         for (i, c) in self.pile.iter().enumerate() {

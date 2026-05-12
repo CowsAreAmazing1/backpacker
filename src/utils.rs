@@ -3,20 +3,24 @@ use std::{error::Error, fmt};
 #[derive(Debug)]
 pub enum BError {
     Custom(String),
-    // Attempted to play too many countries of the same continent, (2 without credit card or 3 with credit card)
+    /// Attempted to play too many countries of the same continent, (2 without credit card or 3 with credit card)
     SameContinent,
-    // Attempted to go home with grey card(s)
+    /// Attempted to go home with grey card(s)
     GreyHeld,
-    // Attempted to play bonus on country not supporting it
+    /// Attempted to play bonus on country not supporting it
     InvalidBonus,
-    // Attempted to play bonus without top country
+    /// Attempted to play bonus without top country
     NoTopCountry,
-    // Attempted to discard grey card without suffering
+    /// Attempted to discard grey card without suffering
     FreeGreyDiscard,
-    // Attempted to play a card before choosing whether to go home
+    /// Attempted to play a card before choosing whether to go home
     PlayedBeforeHomeChoice,
-    // Attempted to choose to go home after playing a card
+    /// Attempted to choose to go home after playing a card
     HomeChoiceMissed,
+    /// Attempted to take an action other than choosing a target to attack
+    MustChooseTarget,
+    /// Attempted to play an offensive card on oneself
+    NoSelfTargetting,
 }
 
 impl Error for BError {}
@@ -36,6 +40,8 @@ impl fmt::Display for BError {
             Self::HomeChoiceMissed => {
                 write!(f, "can't go home after starting your turn")
             }
+            Self::MustChooseTarget => write!(f, "must chose a target to attack"),
+            Self::NoSelfTargetting => write!(f, "cant play offensive cards on yourself"),
         }
     }
 }

@@ -17,8 +17,8 @@ pub enum AdviceType {
 /// Advice card struct, describing the flavour and goodness.
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Advice {
-    good: bool,
-    variant: AdviceType,
+    pub(crate) good: bool,
+    pub(crate) variant: AdviceType,
 }
 
 impl Advice {

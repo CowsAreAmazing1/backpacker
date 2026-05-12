@@ -28,6 +28,8 @@ pub struct GameSnapshot {
     pub future: Vec<CardView>,
     pub past: Vec<CardView>,
     pub players: Vec<PlayerView>,
+    /// If a multi-step play is in-progress, index of the card in the active player's hand
+    pub pending_play: Option<usize>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]

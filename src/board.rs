@@ -3,6 +3,7 @@
 use rand::seq::SliceRandom;
 // use rand::seq::IteratorRandom;
 
+use crate::status::StatusType;
 use crate::{
     HAND_SIZE, NUM_PLAYERS,
     cards::{
@@ -22,14 +23,21 @@ use strum_macros::{Display, EnumIter};
 pub enum TurnStage {
     ChooseGoHome,
     PlayOrDiscard,
+    /// Waiting for the current player to select a target for a previously chosen offensive card
+    ChooseTarget,
 }
 
 /// The action a player can take on their turn. This is the input to the `apply_action` function, which will perform the action, resolve it into one or more `TurnEffect`s.
 #[derive(EnumIter, Debug)]
 pub enum PlayerAction {
+    /// Player made a choice about going home.
     GoHome(bool),
+    /// Player played the card at the given index in their hand.
     Play(usize),
+    /// Player discarded the card at the given index in their hand.
     Discard(usize),
+    /// Choose which player to target with a (previously played) offensive card.
+    ChooseTarget(usize),
 }
 
 /// The game-wide effects of a player's action.
@@ -37,6 +45,7 @@ pub enum PlayerAction {
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum TurnEffect {
     PassCardLeft,
+    StoreCard(usize),
     EndTurn,
 }
 
@@ -51,6 +60,8 @@ pub struct Board {
     pub turn: usize,
     /// The current stage of the current player's turn which requires input from the player.
     pub turn_stage: TurnStage,
+    /// When a multi-step play (attack) has been started, store the pending card index here
+    pub pending_play: Option<usize>,
 }
 
 impl Board {
@@ -95,6 +106,7 @@ impl Board {
             players,
             turn: 0,
             turn_stage: TurnStage::ChooseGoHome,
+            pending_play: None,
         }
     }
 
@@ -104,6 +116,7 @@ impl Board {
             return;
         }
         self.turn_stage = TurnStage::ChooseGoHome;
+        self.pending_play = None;
     }
 
     pub fn apply_action(&mut self, action: PlayerAction) -> Result<(), BError> {
@@ -121,13 +134,20 @@ impl Board {
                     return Err(BError::HomeChoiceMissed);
                 }
             }
+            TurnStage::ChooseTarget => {
+                if !matches!(action, PlayerAction::ChooseTarget(..)) {
+                    return Err(BError::MustChooseTarget);
+                }
+            }
         }
 
+        // Main card logic handler
         let effects = self.resolve_action(action)?;
         self.apply_effects(effects);
         Ok(())
     }
 
+    /// Resolves a player's action into the resulting game effects. This is where the main card logic lives.
     fn resolve_action(&mut self, action: PlayerAction) -> Result<Vec<TurnEffect>, BError> {
         let mut effects = vec![];
         match action {
@@ -151,6 +171,16 @@ impl Board {
                 let new_effects = self.play_card(card_index)?;
                 effects.extend(new_effects);
             }
+            PlayerAction::ChooseTarget(target_index) => {
+                // Complete the pending play
+                let card_index = match self.pending_play.take() {
+                    Some(i) => i,
+                    None => return Err(BError::Custom("No pending play to target".to_string())),
+                };
+
+                let new_effects = self.play_card_on(card_index, target_index)?;
+                effects.extend(new_effects);
+            }
             PlayerAction::Discard(card_index) => {
                 let new_effects = self.player_discard(card_index)?;
                 effects.extend(new_effects);
@@ -166,6 +196,7 @@ impl Board {
             println!("Applying effect: {:?}", effect);
             match effect {
                 TurnEffect::PassCardLeft => self.pass_card_left(),
+                TurnEffect::StoreCard(card) => self.store_card(card),
                 TurnEffect::EndTurn => self.end_turn(),
             }
         }
@@ -201,6 +232,11 @@ impl Board {
         Ok(vec![TurnEffect::EndTurn])
     }
 
+    fn store_card(&mut self, card_index: usize) {
+        self.pending_play = Some(card_index);
+        self.turn_stage = TurnStage::ChooseTarget;
+    }
+
     fn pass_card_left(&mut self) {
         todo!("Not sure how to do this yet. This will be a problemo");
     }
@@ -214,9 +250,39 @@ impl Board {
             Card::Bonus(_) => self.players[self.turn].play_bonus(card_index),
             Card::Country(_) => self.players[self.turn].play_country(card_index),
             Card::Grey(_) => self.players[self.turn].play_grey(card_index),
+            Card::Advice(_) => self.players[self.turn].play_advice(card_index),
             _ => Err(BError::Custom(
                 "That card cannot be played from the hand right now".to_string(),
             )),
+        }
+    }
+
+    fn play_card_on(
+        &mut self,
+        card_index: usize,
+        target_index: usize,
+    ) -> Result<Vec<TurnEffect>, BError> {
+        if target_index >= self.players.len() {
+            return Err(BError::Custom("Invalid target player index".to_string()));
+        }
+
+        if target_index == self.turn {
+            return Err(BError::NoSelfTargetting);
+        }
+
+        let card = self.players[self.turn].swap_remove(card_index);
+
+        match card {
+            Card::Advice(advice) => {
+                self.players[target_index].add_status(StatusType::BadAdvice(advice.variant));
+                // Apply bad advice effect to target player
+                Ok(vec![TurnEffect::EndTurn])
+            }
+            _ => {
+                // not an advice card, put back and error
+                self.players[self.turn].pick_up(card);
+                Err(BError::Custom("Not an advice card".to_string()))
+            }
         }
     }
 
@@ -235,6 +301,7 @@ impl Board {
                     score: player.score,
                 })
                 .collect(),
+            pending_play: self.pending_play,
         }
     }
 
