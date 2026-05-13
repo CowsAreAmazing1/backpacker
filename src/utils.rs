@@ -21,6 +21,8 @@ pub enum BError {
     MustChooseTarget,
     /// Attempted to play an offensive card on oneself
     NoSelfTargetting,
+    /// Attemped to perform an action other than passing a card to the left
+    MustPassCard,
 }
 
 impl Error for BError {}
@@ -42,6 +44,7 @@ impl fmt::Display for BError {
             }
             Self::MustChooseTarget => write!(f, "must chose a target to attack"),
             Self::NoSelfTargetting => write!(f, "cant play offensive cards on yourself"),
+            Self::MustPassCard => write!(f, "must pass a card to the left"),
         }
     }
 }

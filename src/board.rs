@@ -1,6 +1,7 @@
 // use std::{thread::sleep, time::Duration};
 
 use rand::seq::SliceRandom;
+use serde::{Deserialize, Serialize};
 // use rand::seq::IteratorRandom;
 
 use crate::status::StatusType;
@@ -19,12 +20,14 @@ use crate::{
 use strum_macros::{Display, EnumIter};
 
 /// The current stage of the current player's turn
-#[derive(Debug, Display, PartialEq)]
+#[derive(Clone, Copy, Debug, Display, PartialEq, Serialize, Deserialize)]
 pub enum TurnStage {
     ChooseGoHome,
     PlayOrDiscard,
     /// Waiting for the current player to select a target for a previously chosen offensive card
     ChooseTarget,
+    /// All players must choose a card to pass to the left
+    PassCardLeft,
 }
 
 /// The action a player can take on their turn. This is the input to the `apply_action` function, which will perform the action, resolve it into one or more `TurnEffect`s.
@@ -38,14 +41,21 @@ pub enum PlayerAction {
     Discard(usize),
     /// Choose which player to target with a (previously played) offensive card.
     ChooseTarget(usize),
+    /// Player chose which card to pass to the left.
+    PassCard(usize),
 }
 
 /// The game-wide effects of a player's action.
 /// Sorted by importance / in the order they should be considered.
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum TurnEffect {
-    PassCardLeft,
+    /// A player has initiated a card pass to the left.
+    StartPassCard,
+    /// A player has passed a card to the left. (player index, card passed)
+    PassCardLeft(Card),
+    /// A player has played a card that requires further input (e.g. choosing a target to attack).
     StoreCard(usize),
+    /// The player's turn has ended, and we should move onto the next player.
     EndTurn,
 }
 
@@ -60,8 +70,10 @@ pub struct Board {
     pub turn: usize,
     /// The current stage of the current player's turn which requires input from the player.
     pub turn_stage: TurnStage,
-    /// When a multi-step play (attack) has been started, store the pending card index here
+    /// When a multi-step play (attack) has been started, store the pending card index here.
     pub pending_play: Option<usize>,
+    /// When a card pass has been started, store the cards that have been given here until all players have chosen, then pass them all at once.
+    pass_handler: Option<Vec<Option<Card>>>,
 }
 
 impl Board {
@@ -107,6 +119,7 @@ impl Board {
             turn: 0,
             turn_stage: TurnStage::ChooseGoHome,
             pending_play: None,
+            pass_handler: None,
         }
     }
 
@@ -137,6 +150,11 @@ impl Board {
             TurnStage::ChooseTarget => {
                 if !matches!(action, PlayerAction::ChooseTarget(..)) {
                     return Err(BError::MustChooseTarget);
+                }
+            }
+            TurnStage::PassCardLeft => {
+                if !matches!(action, PlayerAction::PassCard(..)) {
+                    return Err(BError::MustPassCard);
                 }
             }
         }
@@ -185,6 +203,10 @@ impl Board {
                 let new_effects = self.player_discard(card_index)?;
                 effects.extend(new_effects);
             }
+            PlayerAction::PassCard(card_index) => {
+                let new_effects = self.pass_card(card_index)?;
+                effects.extend(new_effects);
+            }
         }
 
         effects.sort();
@@ -195,9 +217,10 @@ impl Board {
         for effect in effects {
             println!("Applying effect: {:?}", effect);
             match effect {
-                TurnEffect::PassCardLeft => self.pass_card_left(),
-                TurnEffect::StoreCard(card) => self.store_card(card),
+                TurnEffect::StoreCard(card_idx) => self.store_card(card_idx),
                 TurnEffect::EndTurn => self.end_turn(),
+                TurnEffect::StartPassCard => self.start_pass_card(),
+                TurnEffect::PassCardLeft(card) => self.handle_card_pass(card),
             }
         }
     }
@@ -207,13 +230,12 @@ impl Board {
         self.next_turn();
     }
 
-    fn next_turn(&mut self) {
-        if self.turn == self.players.len() - 1 {
-            self.turn = 0;
-        } else {
-            self.turn += 1;
-        }
+    fn increment_turn(&mut self) {
+        self.turn = (self.turn + 1) % self.players.len();
+    }
 
+    fn next_turn(&mut self) {
+        self.increment_turn();
         self.start_turn();
     }
 
@@ -237,8 +259,39 @@ impl Board {
         self.turn_stage = TurnStage::ChooseTarget;
     }
 
-    fn pass_card_left(&mut self) {
-        todo!("Not sure how to do this yet. This will be a problemo");
+    fn start_pass_card(&mut self) {
+        self.turn_stage = TurnStage::PassCardLeft;
+        self.pass_handler = Some((0..NUM_PLAYERS).map(|_| None).collect());
+    }
+
+    fn pass_card(&mut self, card_index: usize) -> Result<Vec<TurnEffect>, BError> {
+        if card_index >= self.players[self.turn].hand_len() {
+            return Err(BError::Custom("Invalid card index".to_string()));
+        }
+
+        let card = self.players[self.turn].swap_remove(card_index);
+        Ok(vec![TurnEffect::PassCardLeft(card)])
+    }
+
+    fn handle_card_pass(&mut self, card: Card) {
+        if let Some(pass_vec) = &mut self.pass_handler {
+            pass_vec[self.turn] = Some(card);
+
+            // Ckeck if everyone has passed a card. This will happen once the player before the current player passes a card, so the turn counter will be one behind.
+            if pass_vec.iter().all(|c| c.is_some()) {
+                for (i, card) in pass_vec.drain(..).enumerate() {
+                    let target_player = (i + 1) % self.players.len();
+                    self.players[target_player].pick_up(card.unwrap());
+                }
+                self.increment_turn(); // Move forwards to the player who initiated the pass.
+                self.next_turn();
+            } else {
+                // Move to the next player to pass a card.
+                self.increment_turn();
+            }
+        } else {
+            panic!("Received a card to pass when no pass was in progress!");
+        }
     }
 
     fn play_card(&mut self, card_index: usize) -> Result<Vec<TurnEffect>, BError> {
@@ -289,7 +342,7 @@ impl Board {
     pub fn snapshot(&self) -> GameSnapshot {
         GameSnapshot {
             turn: self.turn,
-            turn_stage: self.turn_stage.to_string(),
+            turn_stage: self.turn_stage,
             future: self.future.iter().map(card_view).collect(),
             past: self.past.iter().map(card_view).collect(),
             players: self

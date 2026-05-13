@@ -259,9 +259,20 @@ fn render_local_board(ui: &mut egui::Ui, board: &mut Board, status_message: &mut
                     });
 
                     if let Some(card_idx) = played_card_idx {
-                        match board.apply_action(PlayerAction::Play(card_idx)) {
-                            Ok(()) => *status_message = None,
-                            Err(err) => *status_message = Some(err.to_string()),
+                        match board.turn_stage {
+                            TurnStage::PlayOrDiscard => {
+                                match board.apply_action(PlayerAction::Play(card_idx)) {
+                                    Ok(()) => *status_message = None,
+                                    Err(err) => *status_message = Some(err.to_string()),
+                                }
+                            }
+                            TurnStage::PassCardLeft => {
+                                match board.apply_action(PlayerAction::PassCard(card_idx)) {
+                                    Ok(()) => *status_message = None,
+                                    Err(err) => *status_message = Some(err.to_string()),
+                                }
+                            }
+                            _ => {}
                         }
                     }
                     if let Some(card_idx) = discarded_card_idx {
@@ -303,7 +314,7 @@ fn render_remote_board(ui: &mut egui::Ui, client: &RemoteGameClient) {
     if let Some(snapshot) = snapshot {
         egui::Panel::left("game info").show_inside(ui, |ui| {
             ui.heading(format!("Player {}'s turn", snapshot.turn + 1));
-            ui.label(snapshot.turn_stage.clone());
+            ui.label(snapshot.turn_stage.to_string());
             ui.separator();
             if let Some(message) = &status_message {
                 ui.label(message);
@@ -349,7 +360,7 @@ fn render_remote_board(ui: &mut egui::Ui, client: &RemoteGameClient) {
                 }
                 ui.end_row();
 
-                let enabled = if snapshot.turn_stage == "ChooseGoHome" {
+                let enabled = if snapshot.turn_stage == TurnStage::ChooseGoHome {
                     for player_idx in 0..snapshot.players.len() {
                         ui.centered_and_justified(|ui| {
                             if player_idx == snapshot.turn {
@@ -385,7 +396,7 @@ fn render_remote_board(ui: &mut egui::Ui, client: &RemoteGameClient) {
                     }
                     ui.end_row();
                     false
-                } else if snapshot.turn_stage == "ChooseTarget" {
+                } else if snapshot.turn_stage == TurnStage::ChooseTarget {
                     for player_idx in 0..snapshot.players.len() {
                         ui.centered_and_justified(|ui| {
                             if player_idx != snapshot.turn {
@@ -426,7 +437,7 @@ fn render_remote_board(ui: &mut egui::Ui, client: &RemoteGameClient) {
                                     .then(|| played_card_idx = Some(card_idx));
                                     if !card.is_grey
                                         && is_active_player
-                                        && snapshot.turn_stage != "ChooseGoHome"
+                                        && snapshot.turn_stage != TurnStage::ChooseGoHome
                                         && ui.button("🕯").clicked()
                                     {
                                         discarded_card_idx = Some(card_idx);
@@ -437,7 +448,17 @@ fn render_remote_board(ui: &mut egui::Ui, client: &RemoteGameClient) {
                     });
 
                     if let Some(card_idx) = played_card_idx {
-                        client.send(ClientMsg::Play { index: card_idx });
+                        match snapshot.turn_stage {
+                            TurnStage::PlayOrDiscard => {
+                                client.send(ClientMsg::Play { index: card_idx });
+                            }
+                            TurnStage::PassCardLeft => {
+                                client.send(ClientMsg::PassCard { index: card_idx });
+                            }
+                            _ => {
+                                panic!("Card played in invalid turn stage {}", snapshot.turn_stage);
+                            }
+                        }
                     }
                     if let Some(card_idx) = discarded_card_idx {
                         client.send(ClientMsg::Discard { index: card_idx });

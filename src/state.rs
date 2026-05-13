@@ -1,5 +1,7 @@
 use serde::{Deserialize, Serialize};
 
+use crate::board::TurnStage;
+
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct CardView {
     pub label: String,
@@ -24,7 +26,7 @@ pub struct PlayerView {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct GameSnapshot {
     pub turn: usize,
-    pub turn_stage: String,
+    pub turn_stage: TurnStage,
     pub future: Vec<CardView>,
     pub past: Vec<CardView>,
     pub players: Vec<PlayerView>,
@@ -39,6 +41,7 @@ pub enum ClientMsg {
     Discard { index: usize },
     GoHome { go: bool },
     ChooseTarget { target: usize },
+    PassCard { index: usize },
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]

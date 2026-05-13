@@ -120,6 +120,7 @@ async fn handle_client_msg(
         ClientMsg::Discard { index } => b.apply_action(PlayerAction::Discard(index)),
         ClientMsg::GoHome { go } => b.apply_action(PlayerAction::GoHome(go)),
         ClientMsg::ChooseTarget { target } => b.apply_action(PlayerAction::ChooseTarget(target)),
+        ClientMsg::PassCard { index } => b.apply_action(PlayerAction::PassCard(index)),
     };
 
     match res {

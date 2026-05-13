@@ -35,9 +35,10 @@ impl Player {
         self.no_turn()
     }
 
-    /// Adds a card to the player's hand.
+    /// Adds a card to the player's hand, and sorts it.
     pub(crate) fn pick_up(&mut self, card: Card) {
         self.hand.push(card);
+        self.sort_hand();
     }
 
     /// Allows access to the accessable top card of the `Player`'s pile, or None if it is empty.
@@ -196,6 +197,7 @@ impl Player {
         }
 
         let card = self.hand.swap_remove(card_index);
+        // -TODO: this card needs to be discarded once the effects are applied.
 
         if let Card::Grey(grey) = card {
             match grey {
@@ -205,7 +207,7 @@ impl Player {
                 }
                 GreyType::Sickness => {
                     self.add_status(StatusType::MissGo(1));
-                    Ok(vec![TurnEffect::PassCardLeft, TurnEffect::EndTurn])
+                    Ok(vec![TurnEffect::StartPassCard])
                 }
             }
         } else {
