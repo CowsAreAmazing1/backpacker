@@ -162,7 +162,7 @@ fn render_local_board(ui: &mut egui::Ui, board: &mut Board, status_message: &mut
             }
             ui.end_row();
 
-            if board.turn_stage == TurnStage::ChooseGoHome {
+            let enabled = if board.turn_stage == TurnStage::ChooseGoHome {
                 for player_idx in 0..board.players.len() {
                     ui.centered_and_justified(|ui| {
                         if player_idx == board.turn {
@@ -202,43 +202,75 @@ fn render_local_board(ui: &mut egui::Ui, board: &mut Board, status_message: &mut
                     });
                 }
                 ui.end_row();
-            }
+                false
+            } else if board.turn_stage == TurnStage::ChooseTarget {
+                for player_idx in 0..board.players.len() {
+                    ui.centered_and_justified(|ui| {
+                        if player_idx != board.turn {
+                            if ui
+                                .button(format!("Target Player {}", player_idx + 1))
+                                .clicked()
+                            {
+                                match board.apply_action(PlayerAction::ChooseTarget(player_idx)) {
+                                    Ok(()) => *status_message = None,
+                                    Err(err) => *status_message = Some(err.to_string()),
+                                }
+                            }
+                        } else {
+                            ui.label("Target Player");
+                        }
+                    });
+                }
+                ui.end_row();
+                false
+            } else {
+                true
+            };
 
             for player_idx in 0..board.players.len() {
                 let is_active_player = player_idx == board.turn;
                 let mut played_card_idx = None;
                 let mut discarded_card_idx = None;
 
-                ui.group(|ui| {
-                    ui.vertical(|ui| {
-                        for (card_idx, card) in board.players[player_idx].iter_hand().enumerate() {
-                            ui.horizontal(|ui| {
-                                draw_card(ui, card, (card_idx + 1).to_string(), is_active_player)
+                ui.add_enabled_ui(enabled, |ui| {
+                    ui.group(|ui| {
+                        ui.vertical(|ui| {
+                            for (card_idx, card) in
+                                board.players[player_idx].iter_hand().enumerate()
+                            {
+                                ui.horizontal(|ui| {
+                                    draw_card(
+                                        ui,
+                                        card,
+                                        (card_idx + 1).to_string(),
+                                        is_active_player,
+                                    )
                                     .then(|| played_card_idx = Some(card_idx));
-                                if !card.is_grey()
-                                    && is_active_player
-                                    && board.turn_stage != TurnStage::ChooseGoHome
-                                    && ui.button("🕯").clicked()
-                                {
-                                    discarded_card_idx = Some(card_idx);
-                                }
-                            });
-                        }
-                    })
-                });
+                                    if !card.is_grey()
+                                        && is_active_player
+                                        && board.turn_stage != TurnStage::ChooseGoHome
+                                        && ui.button("🕯").clicked()
+                                    {
+                                        discarded_card_idx = Some(card_idx);
+                                    }
+                                });
+                            }
+                        })
+                    });
 
-                if let Some(card_idx) = played_card_idx {
-                    match board.apply_action(PlayerAction::Play(card_idx)) {
-                        Ok(()) => *status_message = None,
-                        Err(err) => *status_message = Some(err.to_string()),
+                    if let Some(card_idx) = played_card_idx {
+                        match board.apply_action(PlayerAction::Play(card_idx)) {
+                            Ok(()) => *status_message = None,
+                            Err(err) => *status_message = Some(err.to_string()),
+                        }
                     }
-                }
-                if let Some(card_idx) = discarded_card_idx {
-                    match board.apply_action(PlayerAction::Discard(card_idx)) {
-                        Ok(()) => *status_message = None,
-                        Err(err) => *status_message = Some(err.to_string()),
+                    if let Some(card_idx) = discarded_card_idx {
+                        match board.apply_action(PlayerAction::Discard(card_idx)) {
+                            Ok(()) => *status_message = None,
+                            Err(err) => *status_message = Some(err.to_string()),
+                        }
                     }
-                }
+                });
             }
             ui.end_row();
 
@@ -317,7 +349,7 @@ fn render_remote_board(ui: &mut egui::Ui, client: &RemoteGameClient) {
                 }
                 ui.end_row();
 
-                if snapshot.turn_stage == "ChooseGoHome" {
+                let enabled = if snapshot.turn_stage == "ChooseGoHome" {
                     for player_idx in 0..snapshot.players.len() {
                         ui.centered_and_justified(|ui| {
                             if player_idx == snapshot.turn {
@@ -352,7 +384,27 @@ fn render_remote_board(ui: &mut egui::Ui, client: &RemoteGameClient) {
                         });
                     }
                     ui.end_row();
-                }
+                    false
+                } else if snapshot.turn_stage == "ChooseTarget" {
+                    for player_idx in 0..snapshot.players.len() {
+                        ui.centered_and_justified(|ui| {
+                            if player_idx != snapshot.turn {
+                                if ui
+                                    .button(format!("Target Player {}", player_idx + 1))
+                                    .clicked()
+                                {
+                                    client.send(ClientMsg::ChooseTarget { target: player_idx });
+                                }
+                            } else {
+                                ui.label("Target Player");
+                            }
+                        });
+                    }
+                    ui.end_row();
+                    false
+                } else {
+                    true
+                };
 
                 for player_idx in 0..snapshot.players.len() {
                     let is_active_player = player_idx == snapshot.turn;

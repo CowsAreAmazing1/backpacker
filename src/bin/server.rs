@@ -119,6 +119,7 @@ async fn handle_client_msg(
         ClientMsg::Play { index } => b.apply_action(PlayerAction::Play(index)),
         ClientMsg::Discard { index } => b.apply_action(PlayerAction::Discard(index)),
         ClientMsg::GoHome { go } => b.apply_action(PlayerAction::GoHome(go)),
+        ClientMsg::ChooseTarget { target } => b.apply_action(PlayerAction::ChooseTarget(target)),
     };
 
     match res {

@@ -38,6 +38,7 @@ pub enum ClientMsg {
     Play { index: usize },
     Discard { index: usize },
     GoHome { go: bool },
+    ChooseTarget { target: usize },
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]

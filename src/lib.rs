@@ -17,7 +17,7 @@ pub mod cards {
 
 pub use ui::GameEgui;
 
-pub const NUM_PLAYERS: usize = 4;
+pub const NUM_PLAYERS: usize = 2;
 pub const HAND_SIZE: usize = 5;
 
 #[cfg(not(target_arch = "wasm32"))]
