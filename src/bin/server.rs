@@ -13,11 +13,11 @@ use warp::Filter;
 use warp::ws::{Message, WebSocket};
 
 #[cfg(not(target_arch = "wasm32"))]
-use backpacker::board::Board;
+use backpacker_lib::board::Board;
 #[cfg(not(target_arch = "wasm32"))]
-use backpacker::board::PlayerAction;
+use backpacker_lib::board::PlayerAction;
 #[cfg(not(target_arch = "wasm32"))]
-use backpacker::state::{ClientMsg, ServerMsg};
+use backpacker_lib::state::{ClientMsg, ServerMsg};
 
 #[cfg(not(target_arch = "wasm32"))]
 #[tokio::main]

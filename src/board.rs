@@ -1,5 +1,7 @@
 // use std::{thread::sleep, time::Duration};
 
+use std::fmt::Debug;
+
 use rand::seq::SliceRandom;
 use serde::{Deserialize, Serialize};
 // use rand::seq::IteratorRandom;
@@ -24,13 +26,15 @@ use strum_macros::{Display, EnumIter};
 pub enum TurnStage {
     ChooseGoHome,
     PlayOrDiscard,
-    /// Waiting for the current player to select a target for a previously chosen offensive card
+    /// Waiting for the current player to select a target for a previously played offensive card
     ChooseTarget,
     /// All players must choose a card to pass to the left
     PassCardLeft,
 }
 
-/// The action a player can take on their turn. This is the input to the `apply_action` function, which will perform the action, resolve it into one or more `TurnEffect`s.
+/// The action a player can take on their turn.
+///  This is the input to the `apply_action` function, which will perform the action,
+/// resolve it into one or more `TurnEffect`s.
 #[derive(EnumIter, Debug)]
 pub enum PlayerAction {
     /// Player made a choice about going home.
@@ -45,9 +49,9 @@ pub enum PlayerAction {
     PassCard(usize),
 }
 
-/// The game-wide effects of a player's action.
+/// The game-wide effects of a player's action, handled by the board
 /// Sorted by importance / in the order they should be considered.
-#[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(PartialEq, Eq, PartialOrd, Ord)]
 pub enum TurnEffect {
     /// A player has initiated a card pass to the left.
     StartPassCard,
@@ -57,6 +61,17 @@ pub enum TurnEffect {
     StoreCard(usize),
     /// The player's turn has ended, and we should move onto the next player.
     EndTurn,
+}
+
+impl Debug for TurnEffect {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::StartPassCard => write!(f, "StartPassCard"),
+            Self::PassCardLeft(card) => write!(f, "PassCardLeft({})", card),
+            Self::StoreCard(index) => write!(f, "StoreCard({})", index),
+            Self::EndTurn => write!(f, "EndTurn"),
+        }
+    }
 }
 
 pub struct Board {
@@ -123,6 +138,7 @@ impl Board {
         }
     }
 
+    /// Prepare the current `Player` for their turn, and prepare the correct `TurnState`
     fn start_turn(&mut self) {
         if self.players[self.turn].start_turn() {
             self.next_turn();

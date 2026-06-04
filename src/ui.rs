@@ -422,47 +422,52 @@ fn render_remote_board(ui: &mut egui::Ui, client: &RemoteGameClient) {
                     let mut played_card_idx = None;
                     let mut discarded_card_idx = None;
 
-                    ui.group(|ui| {
-                        ui.vertical(|ui| {
-                            for (card_idx, card) in
-                                snapshot.players[player_idx].hand.iter().enumerate()
-                            {
-                                ui.horizontal(|ui| {
-                                    draw_card_view(
-                                        ui,
-                                        card,
-                                        (card_idx + 1).to_string(),
-                                        is_active_player,
-                                    )
-                                    .then(|| played_card_idx = Some(card_idx));
-                                    if !card.is_grey
-                                        && is_active_player
-                                        && snapshot.turn_stage != TurnStage::ChooseGoHome
-                                        && ui.button("🕯").clicked()
-                                    {
-                                        discarded_card_idx = Some(card_idx);
-                                    }
-                                });
-                            }
-                        })
-                    });
+                    ui.add_enabled_ui(enabled, |ui| {
+                        ui.group(|ui| {
+                            ui.vertical(|ui| {
+                                for (card_idx, card) in
+                                    snapshot.players[player_idx].hand.iter().enumerate()
+                                {
+                                    ui.horizontal(|ui| {
+                                        draw_card_view(
+                                            ui,
+                                            card,
+                                            (card_idx + 1).to_string(),
+                                            is_active_player,
+                                        )
+                                        .then(|| played_card_idx = Some(card_idx));
+                                        if !card.is_grey
+                                            && is_active_player
+                                            && snapshot.turn_stage != TurnStage::ChooseGoHome
+                                            && ui.button("🕯").clicked()
+                                        {
+                                            discarded_card_idx = Some(card_idx);
+                                        }
+                                    });
+                                }
+                            })
+                        });
 
-                    if let Some(card_idx) = played_card_idx {
-                        match snapshot.turn_stage {
-                            TurnStage::PlayOrDiscard => {
-                                client.send(ClientMsg::Play { index: card_idx });
-                            }
-                            TurnStage::PassCardLeft => {
-                                client.send(ClientMsg::PassCard { index: card_idx });
-                            }
-                            _ => {
-                                panic!("Card played in invalid turn stage {}", snapshot.turn_stage);
+                        if let Some(card_idx) = played_card_idx {
+                            match snapshot.turn_stage {
+                                TurnStage::PlayOrDiscard => {
+                                    client.send(ClientMsg::Play { index: card_idx });
+                                }
+                                TurnStage::PassCardLeft => {
+                                    client.send(ClientMsg::PassCard { index: card_idx });
+                                }
+                                _ => {
+                                    panic!(
+                                        "Card played in invalid turn stage {}",
+                                        snapshot.turn_stage
+                                    );
+                                }
                             }
                         }
-                    }
-                    if let Some(card_idx) = discarded_card_idx {
-                        client.send(ClientMsg::Discard { index: card_idx });
-                    }
+                        if let Some(card_idx) = discarded_card_idx {
+                            client.send(ClientMsg::Discard { index: card_idx });
+                        }
+                    });
                 }
                 ui.end_row();
 

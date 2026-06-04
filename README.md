@@ -28,5 +28,5 @@ ngrok http 3030
 
 In practice:
 
-1. Run `build_server.bat` in one terminal:
+1. Run `build_server.bat` in one terminal.
 2. Host the directory in another.
