@@ -89,12 +89,19 @@ impl Player {
         self.status.no_turn()
     }
 
-    // -TODO: doesnt include played attacking cards
-    /// Checks if the player can go home. If not, returns an error describing why.
-    fn can_go_home(&self) -> Result<(), BError> {
+    /// Checks for held grey cards.
+    fn has_grey(&self) -> Result<(), BError> {
         if self.hand.iter().any(|card| matches!(card, Card::Grey(_))) {
-            return Err(BError::GreyHeld);
+            return Err(BError::NoHomeGrey);
         }
+        Ok(())
+    }
+
+    // -TODO: doesnt include played attacking cards
+    /// Checks if the player is `Ok` to go home. If not, returns an error describing why.
+    fn can_go_home(&self) -> Result<(), BError> {
+        self.has_grey()?;
+        self.status.can_go_home()?;
         Ok(())
     }
 
@@ -119,6 +126,8 @@ impl Player {
     }
 
     fn can_play_country(&self, country: &Country) -> Result<(), BError> {
+        self.status.can_play_country_or_bonus()?;
+
         let continent = country.continent();
 
         let times_visited = self
@@ -148,6 +157,7 @@ impl Player {
         if let Card::Country(country) = card {
             if let Err(err) = self.can_play_country(&country) {
                 self.hand.push(Card::Country(country));
+                self.sort_hand();
                 Err(err)
             } else {
                 println!("Playing {}", &country);
@@ -161,12 +171,14 @@ impl Player {
     }
 
     fn can_play_bonus(&self, bonus: &Bonus) -> Result<(), BError> {
+        self.status.can_play_country_or_bonus()?;
+
         if let Some(top_country) = self.top_country() {
             if !top_country.allowed_bonus.contains(bonus.unparse()) {
                 return Err(BError::InvalidBonus);
             }
         } else {
-            return Err(BError::NoTopCountry);
+            return Err(BError::NoTopCountryForBonus);
         }
 
         Ok(())
@@ -178,6 +190,7 @@ impl Player {
         if let Card::Bonus(bonus) = card {
             if let Err(err) = self.can_play_bonus(&bonus) {
                 self.hand.push(Card::Bonus(bonus));
+                self.sort_hand();
                 Err(err)
             } else {
                 let top_country = self.top_country_mut().unwrap();
@@ -212,6 +225,7 @@ impl Player {
             }
         } else {
             self.hand.push(card);
+            self.sort_hand();
             Err(BError::Custom("Not a grey card".to_string()))
         }
     }

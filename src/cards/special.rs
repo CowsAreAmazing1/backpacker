@@ -1,5 +1,7 @@
 use colored::Colorize;
 
+use crate::utils::u8_tup_to_color32;
+
 const SPECIAL: (u8, u8, u8) = (231, 157, 72);
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
@@ -15,10 +17,7 @@ impl Special {
     }
 
     pub(crate) fn render_info(&self) -> (String, egui::Color32) {
-        (
-            self.raw_display(),
-            egui::Color32::from_rgb(SPECIAL.0, SPECIAL.1, SPECIAL.2),
-        )
+        (self.raw_display(), u8_tup_to_color32(SPECIAL))
     }
 }
 

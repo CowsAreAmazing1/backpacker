@@ -1,6 +1,9 @@
 use colored::Colorize;
 
-use crate::cards::{bonus::Bonus, card::RenderableCard};
+use crate::{
+    cards::{bonus::Bonus, card::RenderableCard},
+    utils::u8_tup_to_color32,
+};
 
 const AFRICA: (u8, u8, u8) = (134, 80, 29);
 const ASIA: (u8, u8, u8) = (196, 181, 61);
@@ -99,14 +102,12 @@ impl RenderableCard for Country {
 
     fn render_info(&self) -> (String, egui::Color32) {
         let color = match self.continent() {
-            Continent::Africa => egui::Color32::from_rgb(AFRICA.0, AFRICA.1, AFRICA.2),
-            Continent::Asia => egui::Color32::from_rgb(ASIA.0, ASIA.1, ASIA.2),
-            Continent::America => egui::Color32::from_rgb(AMERICA.0, AMERICA.1, AMERICA.2),
-            Continent::Antarctica => {
-                egui::Color32::from_rgb(ANTARCTICA.0, ANTARCTICA.1, ANTARCTICA.2)
-            }
-            Continent::Europe => egui::Color32::from_rgb(EUROPE.0, EUROPE.1, EUROPE.2),
-            Continent::Oceania => egui::Color32::from_rgb(OCEANIA.0, OCEANIA.1, OCEANIA.2),
+            Continent::Africa => u8_tup_to_color32(AFRICA),
+            Continent::Asia => u8_tup_to_color32(ASIA),
+            Continent::America => u8_tup_to_color32(AMERICA),
+            Continent::Antarctica => u8_tup_to_color32(ANTARCTICA),
+            Continent::Europe => u8_tup_to_color32(EUROPE),
+            Continent::Oceania => u8_tup_to_color32(OCEANIA),
         };
         (self.raw_display(), color)
     }

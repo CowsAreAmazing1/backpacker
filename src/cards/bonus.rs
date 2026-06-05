@@ -1,6 +1,6 @@
 use colored::Colorize;
 
-use crate::cards::card::RenderableCard;
+use crate::{cards::card::RenderableCard, utils::u8_tup_to_color32};
 
 const BONUS: (u8, u8, u8) = (106, 229, 218);
 
@@ -59,7 +59,7 @@ impl RenderableCard for Bonus {
     }
 
     fn render_info(&self) -> (String, egui::Color32) {
-        let color = egui::Color32::from_rgb(BONUS.0, BONUS.1, BONUS.2);
+        let color = u8_tup_to_color32(BONUS);
         (self.raw_display(), color)
     }
 }

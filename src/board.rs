@@ -160,7 +160,7 @@ impl Board {
                 if !(matches!(action, PlayerAction::Play(..))
                     || matches!(action, PlayerAction::Discard(..)))
                 {
-                    return Err(BError::HomeChoiceMissed);
+                    return Err(BError::NoHomePlayed);
                 }
             }
             TurnStage::ChooseTarget => {
@@ -350,6 +350,7 @@ impl Board {
             _ => {
                 // not an advice card, put back and error
                 self.players[self.turn].pick_up(card);
+                self.players[self.turn].sort_hand();
                 Err(BError::Custom("Not an advice card".to_string()))
             }
         }

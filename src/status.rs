@@ -1,5 +1,6 @@
-use crate::cards::advice::AdviceType;
+use crate::{cards::advice::AdviceType, utils::BError};
 
+/// Status effects that can be applied to a player.
 #[derive(Debug, PartialEq)]
 pub enum StatusType {
     // Player will miss their next go(s)
@@ -12,6 +13,7 @@ pub enum StatusType {
     VisaProblem,
 }
 
+/// Handles all status effects on a player, such as missing turns, and tracks offensive cards played.
 #[derive(Debug)]
 pub(crate) struct StatusHandler {
     types: Vec<StatusType>,
@@ -50,6 +52,26 @@ impl StatusHandler {
 
         // sleep(Duration::from_millis(PAUSE_TIME));
         false
+    }
+
+    /// Decides if a player can go home, based on attacking cards. TODO
+    pub(crate) fn can_go_home(&self) -> Result<(), BError> {
+        for ty in self.types.iter() {
+            if let StatusType::BadAdvice(advice) = ty {
+                return Err(BError::NoHomeBadAdvice(*advice));
+            }
+        }
+
+        Ok(())
+    }
+
+    pub(crate) fn can_play_country_or_bonus(&self) -> Result<(), BError> {
+        for ty in self.types.iter() {
+            if let StatusType::BadAdvice(advice) = ty {
+                return Err(BError::NoPlayBadAdvice(*advice));
+            }
+        }
+        Ok(())
     }
 
     fn cleanup(&mut self) {

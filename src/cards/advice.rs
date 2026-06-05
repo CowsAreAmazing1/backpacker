@@ -1,12 +1,12 @@
 use colored::Colorize;
 
-use crate::cards::card::RenderableCard;
+use crate::{cards::card::RenderableCard, utils::u8_tup_to_color32};
 
 const GOOD_ADVICE: (u8, u8, u8) = (12, 186, 74);
 const BAD_ADVICE: (u8, u8, u8) = (248, 30, 88);
 
 /// Advice flavour enum, used for good and bad advice cards.
-#[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Copy, Clone)]
 pub enum AdviceType {
     Money,
     Bureaucracy,
@@ -36,13 +36,13 @@ impl std::fmt::Display for Advice {
         let pre = if self.good { "Good" } else { "Bad" };
         let (c1, c2) = if self.good {
             (
-                GOOD_ADVICE, // CustomColor::new(12, 186, 74), // -TODO: maybe use different colors for the text Good/Bad and the type text?
-                GOOD_ADVICE, // CustomColor::new(81, 255, 143),
+                GOOD_ADVICE, // (12, 186, 74), // -TODO: maybe use different colors for the text Good/Bad and the type text?
+                GOOD_ADVICE, // (81, 255, 143),
             )
         } else {
             (
-                BAD_ADVICE, // CustomColor::new(248, 30, 88),
-                BAD_ADVICE, // CustomColor::new(248, 73, 119),
+                BAD_ADVICE, // (248, 30, 88),
+                BAD_ADVICE, // (248, 73, 119),
             )
         };
 
@@ -81,9 +81,9 @@ impl RenderableCard for Advice {
     fn render_info(&self) -> (String, egui::Color32) {
         let text = self.raw_display();
         let color = if self.good {
-            egui::Color32::from_rgb(GOOD_ADVICE.0, GOOD_ADVICE.1, GOOD_ADVICE.2)
+            u8_tup_to_color32(GOOD_ADVICE)
         } else {
-            egui::Color32::from_rgb(BAD_ADVICE.0, BAD_ADVICE.1, BAD_ADVICE.2)
+            u8_tup_to_color32(BAD_ADVICE)
         };
         (text, color)
     }

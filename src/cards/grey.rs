@@ -1,6 +1,6 @@
 use colored::Colorize;
 
-use crate::cards::card::RenderableCard;
+use crate::{cards::card::RenderableCard, utils::u8_tup_to_color32};
 
 const GREY: (u8, u8, u8) = (120, 120, 120);
 
@@ -30,9 +30,6 @@ impl RenderableCard for GreyType {
     }
 
     fn render_info(&self) -> (String, egui::Color32) {
-        (
-            self.raw_display(),
-            egui::Color32::from_rgb(GREY.0, GREY.1, GREY.2),
-        )
+        (self.raw_display(), u8_tup_to_color32(GREY))
     }
 }
